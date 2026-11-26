@@ -18,6 +18,7 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
     private val registration = environment.host.registerTask { close() }
     private val preferences = environment.context.getSharedPreferences("platform_settings", Context.MODE_PRIVATE)
     val collectionSort = NeteaseCollectionSort(environment.context)
+    val listenTracker by lazy { NeteaseListenTracker(environment.context) }
     val revision = NeteaseAccountRevision()
     var dataRevision by mutableLongStateOf(0L)
         private set
@@ -30,7 +31,7 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
     val pageState = mutablePageState.asStateFlow()
     val navigation = NeteasePageNavigation { value ->
         mutablePageState.value = SourcePageState(value,
-            when (value) { "playlist" -> selectedPlaylist?.title ?: "歌单"; "authentication" -> "登录网易云音乐"; "settings" -> "网易云音乐设置"; else -> "网易云音乐" },
+            when (value) { "playlist" -> selectedPlaylist?.title ?: "歌单"; "recent" -> "最近播放"; "authentication" -> "登录网易云音乐"; "settings" -> "网易云音乐设置"; else -> "网易云音乐" },
             value in setOf("home", "search", "my"))
     }
     var page: String

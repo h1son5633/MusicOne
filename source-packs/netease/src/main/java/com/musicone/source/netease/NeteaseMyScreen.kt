@@ -61,6 +61,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -190,6 +191,8 @@ internal fun NeteaseMyScreen(
     hasCustomBackground: Boolean,
     onChooseCustomBackground: () -> Unit,
     onRestoreDefaultBackground: () -> Unit,
+    listenSummary: String = "",
+    onOpenRecent: () -> Unit = {},
 ) {
     var backgroundDialogOpen by remember { mutableStateOf(false) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -213,8 +216,19 @@ internal fun NeteaseMyScreen(
             item("shortcuts") {
                 NeteaseProfileShortcuts(
                     visual = visual,
+                    onRecent = onOpenRecent,
                     onLiked = liked?.let { playlist -> { onOpenPlaylist(playlist) } },
                     onOpenBackground = { backgroundDialogOpen = true },
+                )
+            }
+            if (listenSummary.isNotBlank()) item("listen-stats") {
+                Text(
+                    listenSummary,
+                    color = visual.secondary,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = TextStyle(shadow = profileTextShadow(visual)),
                 )
             }
             item("music-title") {
@@ -356,11 +370,12 @@ private fun ProfileStat(value: String, label: String, visual: NeteaseProfileVisu
 @Composable
 private fun NeteaseProfileShortcuts(
     visual: NeteaseProfileVisual,
+    onRecent: (() -> Unit)?,
     onLiked: (() -> Unit)?,
     onOpenBackground: () -> Unit,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-        ProfileShortcut("最近", Icons.Default.History, visual, null, Modifier.weight(1f))
+        ProfileShortcut("最近", Icons.Default.History, visual, onRecent, Modifier.weight(1f))
         ProfileShortcut("背景", Icons.Default.Wallpaper, visual, onOpenBackground, Modifier.weight(1f))
         ProfileShortcut("喜欢", Icons.Default.FavoriteBorder, visual, onLiked, Modifier.weight(1f))
     }

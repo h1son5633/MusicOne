@@ -203,6 +203,20 @@ internal class NeteaseApiClient(
         )
     }
 
+    /** 听歌打卡：把实际收听秒数上报网易云，更新账号的听歌排行。尽力上报，失败由调用方忽略。 */
+    fun scrobble(cookie: String, trackId: String, seconds: Long) {
+        if (cookie.isBlank() || seconds <= 0) return
+        requireNumericId(trackId, "歌曲")
+        val log = JSONObject().put("action", "play").put("json", JSONObject()
+            .put("id", trackId.toLong()).put("sourceId", 0).put("time", seconds))
+        postEapi(
+            WEBLOG_EAPI,
+            JSONObject().put("logs", JSONArray().put(log).toString()),
+            cookie,
+            "听歌打卡失败",
+        )
+    }
+
     fun changePlaylistTrack(cookie: String, playlistId: String, trackId: String, add: Boolean) {
         requireNumericId(playlistId, "歌单")
         requireNumericId(trackId, "歌曲")
@@ -407,6 +421,7 @@ internal class NeteaseApiClient(
         private const val PLAYBACK_LEGACY_EAPI = "https://interface.music.163.com/eapi/song/enhance/player/url"
         private const val PLAYBACK_EAPI = "https://interface3.music.163.com/eapi/song/enhance/player/url/v1"
         private const val LIKE_EAPI = "https://interface3.music.163.com/eapi/song/like"
+        private const val WEBLOG_EAPI = "https://interface.music.163.com/eapi/feedback/weblog"
         private const val LYRIC_API = "https://music.163.com/api/song/lyric"
         private const val LYRIC_EAPI = "https://interfacepc.music.163.com/eapi/song/lyric/v1"
     }

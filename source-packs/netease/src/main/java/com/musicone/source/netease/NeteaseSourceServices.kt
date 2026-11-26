@@ -13,8 +13,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal class NeteaseSourceServices(private val state: () -> NeteasePackageState) : SourceDiscovery, SourceDailyRecommendations, SourceSearch,
-    SourceCollections, SourceFavorites, SourceCollectionEditing, SourceMediaPlayback, SourceLyricProvider, SourceTrackTheme, SourcePlaybackBehavior, SourceLyricBehavior, SourceCollectionReturnBehavior {
+    SourceCollections, SourceFavorites, SourceCollectionEditing, SourceMediaPlayback, SourceLyricProvider, SourceTrackTheme, SourcePlaybackBehavior, SourceLyricBehavior, SourceCollectionReturnBehavior, SourcePlaybackSessionProvider {
     override val refreshLibraryAfterAnyReturn = true
+    private val listenReporter = NeteaseListenReporter(state)
+    override val playbackSessions: SourcePlaybackSessionObserver get() = listenReporter
     override val preserveVerbatimFallback = true
     override fun sortOptions(collection: SourceCollection) = state().collectionSort.options(collection, state().account?.userId)
     override fun selectedSort(collection: SourceCollection) = state().collectionSort.selected(collection, state().account?.userId)
