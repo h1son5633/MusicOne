@@ -4,9 +4,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.WindowInsets
 import android.graphics.Bitmap
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,10 +52,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -149,35 +145,20 @@ internal fun NeteaseProfileBackdrop(
     visual: NeteaseProfileVisual,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.background(MaterialTheme.colorScheme.background)) {
-        Crossfade(
-            targetState = visual.bitmap,
-            modifier = Modifier.fillMaxSize(),
-            animationSpec = musicMotion(450),
-            label = "我的页背景交接",
-        ) { bitmap ->
-            bitmap?.let {
-                Image(
-                    bitmap = it.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    listOf(
-                        visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .16f else .3f),
-                        visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .08f else .16f),
-                        visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .24f else .48f),
-                        visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .48f else .68f),
-                    ),
+    // 背景图只由宿主在最底层画一份（全局单背景），这里不再重复绘制图片，
+    // 只保留一层保护渐变压在宿主背景之上，保证文字可读。
+    Box(
+        modifier.fillMaxSize().background(
+            Brush.verticalGradient(
+                listOf(
+                    visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .16f else .3f),
+                    visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .08f else .16f),
+                    visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .24f else .48f),
+                    visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .48f else .68f),
                 ),
             ),
-        )
-    }
+        ),
+    )
 }
 
 @Composable

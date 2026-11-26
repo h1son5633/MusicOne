@@ -53,9 +53,22 @@ import androidx.lifecycle.compose.LifecycleEventEffect
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleLarge.copy(letterSpacing = (-.5).sp))
             Text(note, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
-        if (onRefresh != null) FilledTonalButton(onClick = onRefresh, enabled = enabled,
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) {
-            Icon(Icons.Default.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("刷新", fontSize = 13.sp)
+        if (onRefresh != null) {
+            // 玻璃质感：半透明底 + 细亮边 + 无投影，配色与宿主底部胶囊的玻璃取同一套。
+            val dark = MaterialTheme.colorScheme.background.luminance() < .3f
+            Button(onClick = onRefresh, enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (dark) Color(0xFF242526).copy(alpha = .55f) else Color.White.copy(alpha = .55f),
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    disabledContainerColor = if (dark) Color(0xFF242526).copy(alpha = .35f) else Color.White.copy(alpha = .35f),
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                border = BorderStroke(1.dp, if (dark) Color.White.copy(alpha = .16f) else Color(0xFFE0E2E6)),
+                elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp)) {
+                Icon(Icons.Default.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("刷新", fontSize = 13.sp)
+            }
         }
     }
 }
