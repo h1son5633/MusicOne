@@ -145,20 +145,9 @@ internal fun NeteaseProfileBackdrop(
     visual: NeteaseProfileVisual,
     modifier: Modifier = Modifier,
 ) {
-    // 背景图只由宿主在最底层画一份（全局单背景），这里不再重复绘制图片，
-    // 只保留一层保护渐变压在宿主背景之上，保证文字可读。
-    Box(
-        modifier.fillMaxSize().background(
-            Brush.verticalGradient(
-                listOf(
-                    visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .16f else .3f),
-                    visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .08f else .16f),
-                    visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .24f else .48f),
-                    visual.protectionColor.copy(alpha = if (visual.useDarkForeground) .48f else .68f),
-                ),
-            ),
-        ),
-    )
+    // 全局单背景：背景图由宿主在最底层画一份，这里不画图片、也不压保护渐变，
+    // 否则「我的」页会像盖了一层纱、与主页亮度不一致，滑页时中间出现一条分界线。
+    Box(modifier)
 }
 
 @Composable
