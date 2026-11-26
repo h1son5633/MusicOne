@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
 
-/** 启动动画的时间轴：音频线从两侧向中间汇聚（0.4 秒），随后整体淡出露出首页。 */
+/** 启动图的时间点：开屏动画已移除，静态图取 GatherMillis 处的成品波形（Exit 部分仅为旧时间轴保留）。 */
 internal object HomeLaunchTimeline {
     const val GatherMillis = 400L
     const val ExitMillis = 180L

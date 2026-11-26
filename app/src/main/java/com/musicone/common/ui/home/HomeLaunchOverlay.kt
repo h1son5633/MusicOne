@@ -1,6 +1,5 @@
 package com.musicone
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -9,7 +8,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,41 +40,21 @@ internal fun HomeLaunchOverlay(
         repeat(2) { withFrameNanos { } }
         launch.covering = false
     }
-    val animated = remember { HomeLaunchGate.process.takeAnimation() }
-    if (animated) HomeLaunchAnimation()
-    else if (launch.covering) Box(
-        Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .homeLaunchCover { },
-    )
+    // 开屏动画已按用户要求移除：遮罩期间只显示一张静态的成品波形图，与系统启动屏的图一致。
+    remember { HomeLaunchGate.process.takeAnimation() }
+    if (launch.covering) HomeLaunchStaticMark()
 }
 
 @Composable
-private fun HomeLaunchAnimation() {
+private fun HomeLaunchStaticMark() {
     val background = MaterialTheme.colorScheme.background
     val ink = MaterialTheme.colorScheme.onBackground
     val mark = remember { HomeLaunchMark() }
-    val clock = remember { HomeLaunchClock(HomeLaunchGate.process) }
-    var finished by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        var last = withFrameNanos { it }
-        while (!finished && !clock.finished) {
-            withFrameNanos { now ->
-                clock.advance(now - last)
-                last = now
-            }
-        }
-        finished = true
-    }
-    if (finished) return
-    // 开始淡出后首页就能操作，遮罩不再拦截触摸。
-    val covering by remember { derivedStateOf { clock.elapsedMillis < HomeLaunchTimeline.ExitStartMillis } }
     Box(
         Modifier
             .fillMaxSize()
-            .then(if (covering) Modifier.homeLaunchCover { finished = true } else Modifier)
-            .drawBehind { mark.draw(this, clock.elapsedMillis, background, ink) },
+            .homeLaunchCover { }
+            .drawBehind { mark.draw(this, HomeLaunchTimeline.GatherMillis, background, ink) },
     )
 }
 

@@ -185,7 +185,7 @@ internal class SourcePackageController private constructor(private val context: 
 
     companion object {
         /** 其余音源延时补启动的等待时间：先保证冷启动与首页使用，之后再逐个补齐。 */
-        private const val DEFERRED_START_DELAY_MILLIS = 120_000L
+        private const val DEFERRED_START_DELAY_MILLIS = 300_000L
 
         @Volatile private var instance: SourcePackageController? = null
         fun current(): SourcePackageController? = instance
