@@ -1,5 +1,7 @@
 package com.musicone
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.stateDescription
@@ -40,20 +43,30 @@ internal fun HomeLaunchOverlay(
         repeat(2) { withFrameNanos { } }
         launch.covering = false
     }
-    // 开屏动画已按用户要求移除：遮罩期间只显示一张静态的成品波形图，与系统启动屏的图一致。
+    // 开屏动画已按用户要求移除：遮罩期间只显示一张静态的成品波形图，与系统启动屏的图一致；
+    // 遮罩结束时整张图淡出，下方主页随之显露，让开屏与主页有一个衔接而不是硬切。
     remember { HomeLaunchGate.process.takeAnimation() }
-    if (launch.covering) HomeLaunchStaticMark()
+    HomeLaunchStaticMark(covering = launch.covering)
 }
 
 @Composable
-private fun HomeLaunchStaticMark() {
+private fun HomeLaunchStaticMark(covering: Boolean) {
     val background = MaterialTheme.colorScheme.background
     val ink = MaterialTheme.colorScheme.onBackground
     val mark = remember { HomeLaunchMark() }
+    var shown by remember { mutableStateOf(true) }
+    val alpha by animateFloatAsState(
+        targetValue = if (covering) 1f else 0f,
+        animationSpec = tween(durationMillis = 280),
+        finishedListener = { if (!covering) shown = false },
+        label = "LaunchFade",
+    )
+    if (!shown) return
     Box(
         Modifier
             .fillMaxSize()
-            .homeLaunchCover { }
+            .graphicsLayer { this.alpha = alpha }
+            .then(if (covering) Modifier.homeLaunchCover { } else Modifier)
             .drawBehind { mark.draw(this, HomeLaunchTimeline.GatherMillis, background, ink) },
     )
 }

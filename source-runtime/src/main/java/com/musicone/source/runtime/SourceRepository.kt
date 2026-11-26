@@ -74,11 +74,13 @@ class SourceRepository(context: Context, private val host: SourceHost) {
     /**
      * 优先启动：开机只真正加载 [priorityId] 一个音源，其余音源只做删除收尾、不加载，
      * 等被选中、被播放或延时补启动时再由 [startOne] 按同一套激活流程加载，缩短冷启动到主页的时间。
+     * 没有优先音源时（如全新安装、尚未选择音源）必须全部加载：全新安装的音源包都处于
+     * 待生效状态，只有首次启动时激活才能使用，延后会让所有音源都卡在待生效、无一能登录。
      */
     @Synchronized fun startPriority(priorityId: String?): Map<String, SourceInstance> {
         check(!started && live.isEmpty()) { "音源启动只能执行一次" }
         started = true
-        states.keys.toList().forEach { id -> activateSource(id, load = id == priorityId) }
+        states.keys.toList().forEach { id -> activateSource(id, load = priorityId == null || id == priorityId) }
         persist()
         return live.toMap()
     }
