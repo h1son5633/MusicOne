@@ -27,7 +27,7 @@ internal fun capsuleShouldOpenQueue(distanceDp: Float, velocityYDp: Float,
 /** 同一轮输入只归属一个方向；上滑立即拖出队列，抬手按当前位置与速度收尾。 */
 @Composable
 internal fun Modifier.navigationCapsuleGesture(onContact: () -> Unit, blocked: () -> Boolean,
-    onHorizontalDrag: (Float) -> Unit, onHorizontalEnd: () -> Unit, queueState: PlayerQueueState,
+    onHorizontalDrag: (Float) -> Unit, onHorizontalEnd: (Float) -> Unit, queueState: PlayerQueueState,
     onRelease: () -> Unit = {}): Modifier {
     val contact = rememberUpdatedState(onContact)
     val releaseCallback = rememberUpdatedState(onRelease)
@@ -100,7 +100,10 @@ internal fun Modifier.navigationCapsuleGesture(onContact: () -> Unit, blocked: (
                     }
                 }
             } finally {
-                if (direction == CapsuleGestureDirection.HORIZONTAL) horizontalEnd.value()
+                // 横向结束时把释放速度（px/s）交给上层做 FlClash 式惯性投影，决定松手切到哪一页。
+                if (direction == CapsuleGestureDirection.HORIZONTAL) {
+                    horizontalEnd.value(tracker.calculateVelocity().x)
+                }
                 if (queueDragging) queueState.finishOpeningDrag(false, 0f)
                 releaseCallback.value()
             }

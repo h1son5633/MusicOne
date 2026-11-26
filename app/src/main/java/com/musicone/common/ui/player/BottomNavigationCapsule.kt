@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.tanh
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +40,6 @@ internal fun BottomCapsule(
     backdropLayer: androidx.compose.ui.graphics.layer.GraphicsLayer,
     backdropBounds: Rect,
     selectionPosition: () -> Float,
-    onSelectionDrag: (Float) -> Unit,
     onPageChange: (MusicOnePage) -> Unit,
     onNavigationContact: () -> Unit,
     navigationDragBlocked: () -> Boolean,
@@ -51,7 +51,6 @@ internal fun BottomCapsule(
     val currentNavigationContact by rememberUpdatedState(onNavigationContact)
     val currentDragBlocked by rememberUpdatedState(navigationDragBlocked)
     val currentSelectionPosition by rememberUpdatedState(selectionPosition)
-    val currentSelectionDrag by rememberUpdatedState(onSelectionDrag)
     val scope = rememberCoroutineScope()
     // FlClash 式透镜动效（样式与数据不变，只换运动）：拖动时透镜用跟随弹簧追手指，
     // 按下时药丸微微鼓起，快速滑动时按速度果冻拉伸。减动效时全部退化为直接跟随。
@@ -61,14 +60,33 @@ internal fun BottomCapsule(
     var dragTarget by remember { mutableStateOf<Float?>(null) }
     val dragAnim = remember { Animatable(0f) }
     var dragActive by remember { mutableStateOf(false) }
+    // FlClash 式语义：拖动只动透镜，页面纹丝不动；松手才切页。松手后透镜先停在目标页，
+    // 等页面弹簧滑到位（或停在别处）再把位置来源交还给页面，避免透镜跳回。
+    var dragStartIndex by remember { mutableStateOf<Int?>(null) }
+    var dragReleaseTarget by remember { mutableStateOf<Float?>(null) }
     val pressAnim = remember { Animatable(0f) }
     val jellyAnim = remember { Animatable(0f) }
     var jellyTarget by remember { mutableFloatStateOf(0f) }
     val visualPosition = remember { { if (dragActive) dragAnim.value else dragTarget ?: currentSelectionPosition() } }
     var selectionTravelPx by remember { mutableFloatStateOf(1f) }
-    // 拖动期间把弹簧后的透镜位置持续交给页面，页面和药丸一起追手指。
-    LaunchedEffect(dragActive) {
-        if (dragActive) snapshotFlow { dragAnim.value }.collect { currentSelectionDrag(it) }
+    LaunchedEffect(dragReleaseTarget) {
+        val target = dragReleaseTarget ?: return@LaunchedEffect
+        snapshotFlow { currentSelectionPosition() }.collect { position ->
+            val settledHere = abs(position - target) < .01f
+            val settledElsewhere = abs(position - position.roundToInt()) < .001f && !settledHere
+            if (settledHere || settledElsewhere) {
+                dragTarget = null
+                dragActive = false
+                dragReleaseTarget = null
+                dragStartIndex = null
+            }
+        }
+    }
+    fun clearDragState() {
+        dragTarget = null
+        dragActive = false
+        dragReleaseTarget = null
+        dragStartIndex = null
     }
     // 逐帧采样透镜速度，映射成果冻拉伸量（tanh 饱和，静止时自动回零）。
     LaunchedEffect(Unit) {
@@ -96,6 +114,9 @@ internal fun BottomCapsule(
         dragTarget = next
         if (starting) {
             dragActive = true
+            dragReleaseTarget = null
+            dragStartIndex = currentSelectionPosition().roundToInt()
+                .coerceIn(0, MusicOnePage.entries.lastIndex)
             scope.launch {
                 dragAnim.snapTo(currentSelectionPosition())
                 dragAnim.animateTo(next, followSpec)
@@ -104,17 +125,20 @@ internal fun BottomCapsule(
             scope.launch { dragAnim.animateTo(next, followSpec) }
         }
     }
-    fun settleDrag() {
+    fun settleDrag(velocityX: Float) {
+        // FlClash 式收尾：按释放速度把落点向前投影 100ms，最多切到相邻一页，松手这一刻才切页。
         val position = (if (dragActive) dragAnim.value else dragTarget ?: selectionPosition())
             .coerceIn(0f, MusicOnePage.entries.lastIndex.toFloat())
-        val targetPage = rootPageForPosition(position)
+        val projected = position + (velocityX / selectionTravelPx.coerceAtLeast(1f)) * .1f
+        var targetPage = rootPageForPosition(projected)
+        val start = dragStartIndex ?: page.ordinal
+        val clamped = targetPage.ordinal.coerceIn(start - 1, start + 1)
+            .coerceIn(0, MusicOnePage.entries.lastIndex)
+        targetPage = MusicOnePage.entries[clamped]
         onPageChange(targetPage)
-        scope.launch {
-            // 保留拖动终点一帧，等承接动画建立起步状态后再撤下拖动态，避免短暂闪跳旧选择位置。
-            withFrameNanos { }
-            dragTarget = null
-            dragActive = false
-        }
+        // 透镜自己滑向目标页停住，页面随后弹簧跟上；交接由 dragReleaseTarget 的观察者完成。
+        dragReleaseTarget = clamped.toFloat()
+        scope.launch { dragAnim.animateTo(clamped.toFloat(), followSpec) }
     }
     fun onCapsuleContact() {
         currentNavigationContact()
@@ -162,7 +186,7 @@ internal fun BottomCapsule(
                         onContact = { onCapsuleContact() },
                         blocked = { currentDragBlocked() },
                         onHorizontalDrag = { amount -> onDragAmount(amount) },
-                        onHorizontalEnd = { if (dragTarget != null) settleDrag() },
+                        onHorizontalEnd = { velocityX -> if (dragTarget != null) settleDrag(velocityX) },
                         queueState = queueState,
                         onRelease = { onCapsuleRelease() },
                     ),
@@ -177,13 +201,17 @@ internal fun BottomCapsule(
                     stretch = { jellyAnim.value },
                     swell = { pressAnim.value },
                     onHome = {
+                        clearDragState()
                         if (page == MusicOnePage.HOME && kotlin.math.abs(selectionPosition()) < .001f) {
                             primaryHeaderState.requestScrollToTop(MusicOnePage.HOME)
                         } else {
                             onPageChange(MusicOnePage.HOME)
                         }
                     },
-                    onMy = { onPageChange(MusicOnePage.MY) },
+                    onMy = {
+                        clearDragState()
+                        onPageChange(MusicOnePage.MY)
+                    },
                 )
             }
         }

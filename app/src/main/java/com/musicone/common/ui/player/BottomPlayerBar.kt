@@ -194,7 +194,6 @@ internal fun BottomPlayerBar(
             backdropLayer = backdropLayer,
             backdropBounds = backdropBounds,
             selectionPosition = { rootNavigation.position },
-            onSelectionDrag = rootNavigation::dragTo,
             onPageChange = rootNavigation::animateTo,
             onNavigationContact = rootNavigation::beginNavigationInteraction,
             navigationDragBlocked = rootNavigation::isNavigationDragBlocked,
