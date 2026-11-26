@@ -465,6 +465,7 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
             PlayerQueueHost(queueState, viewModel)
             HomeLaunchOverlay(
                 launch = homeLaunch,
+                settingsOrigin = { settingsNavigation.origin },
             )
             sourceBackdrop.dialogContent()
         }
