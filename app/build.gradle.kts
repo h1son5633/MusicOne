@@ -194,7 +194,9 @@ listOf("debug", "sourceDebug", "debugRelease", "release").forEach { variant ->
     val taskSuffix = variant.replaceFirstChar(Char::uppercaseChar)
     val assetsDirectory = layout.buildDirectory.dir("generated/sourcePackAssets/$variant")
     val prepare = tasks.register<Sync>("prepare${taskSuffix}SourcePacks") {
-        listOf("qq", "kugou", "netease", "bilibili", "subsonic", "webdav").forEach { source ->
+        // 按用户要求只内置网易云 + 酷狗两个音源：启动要拷贝/注册/校验的包更少，包体和内存占用也更小；
+        // 其余四个音源（QQ/B站/Subsonic/WebDAV）不再随包分发。
+        listOf("kugou", "netease").forEach { source ->
             dependsOn(":source-packs:$source:$packageTask")
             from(rootProject.layout.projectDirectory.dir("source-packs/$source/build/outputs/source-packs/$packageVariant")) {
                 include("*.mscm", "*.mscp")
