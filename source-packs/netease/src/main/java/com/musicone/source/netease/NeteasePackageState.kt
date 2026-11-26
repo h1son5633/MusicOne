@@ -130,35 +130,6 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
             withContext(Dispatchers.IO) { api.userPlaylists(cookie, user) }
         }
     }
-
-    var historySyncing by mutableStateOf(false)
-        private set
-
-    /** 从网易云听歌排行（全部时间）估算历史累计听歌时长，存为本地账本基线；重复同步不会重复计数。 */
-    fun syncHistoryListening() {
-        val user = account?.userId.orEmpty()
-        if (user.isBlank() || historySyncing) return
-        val expected = revision.get(); val cookie = credential()
-        historySyncing = true
-        scope.launch {
-            try {
-                val entries = withContext(Dispatchers.IO) { api.playRecord(cookie, user) }
-                check(expected)
-                val total = entries.fold(0L) { acc, entry -> acc + entry.first.toLong() * entry.second }
-                if (total <= 0L) {
-                    message = "没有拿到网易云的听歌排行，同步失败"
-                } else {
-                    listenTracker.setHistoryBaseline(total)
-                    dataRevision++
-                    message = "已同步网易云历史听歌时长（按听歌排行估算，约 ${formatListenDuration(total)}）"
-                }
-            } catch (failure: Throwable) {
-                if (failure !is CancellationException) message = "同步失败：${failure.message ?: "未知错误"}"
-            } finally {
-                historySyncing = false
-            }
-        }
-    }
     fun search(query: String) {
         searchQuery = query; searchJob?.cancel()
         searchJob = action {

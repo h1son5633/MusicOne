@@ -217,38 +217,6 @@ internal class NeteaseApiClient(
         )
     }
 
-    /**
-     * 听歌排行（全部时间）：返回 (播放次数, 歌曲时长毫秒) 列表，用于估算历史累计听歌时长。
-     * 网易云没有直接给总时长的接口，只能按排行累加；排行最多返回约 100 首，长尾歌曲不在内。
-     */
-    fun playRecord(cookie: String, userId: String): List<Pair<Int, Long>> {
-        if (cookie.isBlank()) throw NeteaseApiException("请先登录网易云音乐", 301)
-        requireNumericId(userId, "用户")
-        val plain = runCatching {
-            getJson("$PLAY_RECORD_API?uid=${userId.formEncoded()}&type=0", cookie)
-        }.getOrNull()
-        val entries = plain?.let { parsePlayRecord(it) }.orEmpty()
-        if (entries.isNotEmpty()) return entries
-        val encrypted = postEapi(
-            PLAY_RECORD_EAPI,
-            JSONObject().put("uid", userId.toLong()).put("type", 0),
-            cookie,
-            "听歌排行加载失败",
-        )
-        return parsePlayRecord(encrypted)
-    }
-
-    private fun parsePlayRecord(response: JSONObject): List<Pair<Int, Long>> {
-        val values = response.optJSONArray("allData") ?: return emptyList()
-        return (0 until values.length()).mapNotNull { index ->
-            val item = values.optJSONObject(index) ?: return@mapNotNull null
-            val song = item.optJSONObject("song") ?: return@mapNotNull null
-            val count = item.optInt("playCount")
-            val durationMs = song.optLong("dt").takeIf { it > 0L } ?: song.optLong("duration")
-            if (count > 0 && durationMs > 0L) count to durationMs else null
-        }
-    }
-
     fun changePlaylistTrack(cookie: String, playlistId: String, trackId: String, add: Boolean) {
         requireNumericId(playlistId, "歌单")
         requireNumericId(trackId, "歌曲")
@@ -454,8 +422,6 @@ internal class NeteaseApiClient(
         private const val PLAYBACK_EAPI = "https://interface3.music.163.com/eapi/song/enhance/player/url/v1"
         private const val LIKE_EAPI = "https://interface3.music.163.com/eapi/song/like"
         private const val WEBLOG_EAPI = "https://interface.music.163.com/eapi/feedback/weblog"
-        private const val PLAY_RECORD_API = "https://music.163.com/api/v1/play/record"
-        private const val PLAY_RECORD_EAPI = "https://interface.music.163.com/eapi/v1/play/record"
         private const val LYRIC_API = "https://music.163.com/api/song/lyric"
         private const val LYRIC_EAPI = "https://interfacepc.music.163.com/eapi/song/lyric/v1"
     }

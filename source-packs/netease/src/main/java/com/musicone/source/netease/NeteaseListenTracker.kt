@@ -36,8 +36,7 @@ internal data class NeteaseRecentTrack(
 
 /**
  * 本地听歌账本：按天累计实际收听毫秒数（今日/本周/累计展示用），
- * 并保存最近播放的 50 首歌。本地部分从装上这一版开始记；
- * 另可手动从网易云听歌排行导入一次历史基线（估算值），展示累计 = 基线 + 基线后新增。
+ * 并保存最近播放的 50 首歌。从装上这一版开始记，没有历史回填。
  */
 internal class NeteaseListenTracker(context: Context) {
     private val prefs = context.getSharedPreferences("netease_listen", Context.MODE_PRIVATE)
@@ -67,24 +66,6 @@ internal class NeteaseListenTracker(context: Context) {
     }
 
     fun totalMs(): Long = prefs.getLong(KEY_TOTAL, 0L)
-
-    /** 导入网易云历史听歌时长基线（按听歌排行估算），同时快照当时的本地累计，之后只叠加新增部分，避免重复计数。 */
-    fun setHistoryBaseline(ms: Long) {
-        prefs.edit()
-            .putLong(KEY_HISTORY_BASELINE, ms)
-            .putLong(KEY_HISTORY_LOCAL_SNAPSHOT, totalMs())
-            .apply()
-    }
-
-    fun historyBaselineMs(): Long = prefs.getLong(KEY_HISTORY_BASELINE, 0L)
-
-    /** 展示用累计：历史基线 + 基线之后本地新增的收听时长；未导入过基线时就是本地累计。 */
-    fun displayTotalMs(): Long {
-        val baseline = historyBaselineMs()
-        if (baseline <= 0L) return totalMs()
-        val sinceBaseline = totalMs() - prefs.getLong(KEY_HISTORY_LOCAL_SNAPSHOT, 0L)
-        return baseline + sinceBaseline.coerceAtLeast(0L)
-    }
 
     fun recordRecent(track: NeteaseRecentTrack) {
         if (track.remoteId.isBlank()) return
@@ -138,8 +119,6 @@ internal class NeteaseListenTracker(context: Context) {
 
     private companion object {
         const val KEY_TOTAL = "total_ms"
-        const val KEY_HISTORY_BASELINE = "history_baseline_ms"
-        const val KEY_HISTORY_LOCAL_SNAPSHOT = "history_local_snapshot_ms"
         const val KEY_RECENT = "recent_json"
         const val MAX_RECENT = 50
         const val KEEP_DAYS = 370L

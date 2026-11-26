@@ -73,12 +73,9 @@ class NeteaseSourceEntry : SourceEntry, SourceMembershipProvider {
                             NeteaseAdaptiveForeground(background.visual) { NeteaseMyScreen(owner.account, owner.catalog, background.visual, owner.bottomInset.dp,
                                 owner::openPlaylist, { owner.refreshLibrary() }, background.hasCustomGlobal, background.chooseGlobal, background.restoreGlobal,
                                 listenSummary = with(owner.listenTracker) {
-                                    "今日听歌 ${formatListenDuration(todayMs())} · 本周 ${formatListenDuration(weekMs())} · 累计 ${formatListenDuration(displayTotalMs())}"
+                                    "今日听歌 ${formatListenDuration(todayMs())} · 本周 ${formatListenDuration(weekMs())} · 累计 ${formatListenDuration(totalMs())}"
                                 },
-                                onOpenRecent = { owner.open("recent") },
-                                onSyncHistory = owner::syncHistoryListening,
-                                historySyncing = owner.historySyncing,
-                                hasHistoryBaseline = owner.listenTracker.historyBaselineMs() > 0L) }
+                                onOpenRecent = { owner.open("recent") }) }
                             if (owner.account == null) TextButton(onClick = { owner.open("authentication") }, modifier = Modifier.padding(top = 42.dp, start = 20.dp)) { Text("登录网易云音乐") }
                         }
                         "search" -> NeteaseSearchContent(owner, trackActions)
