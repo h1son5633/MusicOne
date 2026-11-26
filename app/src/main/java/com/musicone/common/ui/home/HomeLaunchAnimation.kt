@@ -45,9 +45,10 @@ internal class HomeLaunchGate {
         private set
 
     fun prepare(reduceMotion: Boolean, systemSplash: Boolean): Boolean {
-        pending = !prepared && !reduceMotion
+        // 个人改版：开屏动画已移除，冷启动直接进首页，不再播 M 光扫动画。
+        pending = false
         prepared = true
-        awaitingSplash = pending && systemSplash
+        awaitingSplash = false
         return pending
     }
 
