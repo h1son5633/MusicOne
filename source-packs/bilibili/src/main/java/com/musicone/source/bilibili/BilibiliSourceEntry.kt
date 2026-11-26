@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import com.musicone.source.sdk.*
 
 class BilibiliSourceEntry : SourceEntry {
-    override val descriptor = SourceDescriptor(BILI_SOURCE_ID, "哔哩哔哩", SourceKind.SUPPLEMENTAL, 2, "1.1",
+    override val descriptor = SourceDescriptor(BILI_SOURCE_ID, "哔哩哔哩", SourceKind.SUPPLEMENTAL, 3, "1.1",
         setOf(SourceCapability.HOME, SourceCapability.ACCOUNT, SourceCapability.PLAYBACK, SourceCapability.CONTENT,
             SourceCapability.CHILD_ITEMS, SourceCapability.REMOTE_COLLECTIONS, SourceCapability.IMPORT, SourceCapability.SUBSCRIPTION),
         useCustomPages = false, requiresLogin = false,

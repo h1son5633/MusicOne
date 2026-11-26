@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.filterNotNull
 
 /** QQ 协议与会话只在独立包内初始化，宿主使用公共模板展示资料。 */
 class QqSourceEntry : SourceEntry, SourceMembershipProvider {
-    override val descriptor = SourceDescriptor(QQ_SOURCE_ID, "QQ音乐", SourceKind.MAIN, 4, "1.3",
+    override val descriptor = SourceDescriptor(QQ_SOURCE_ID, "QQ音乐", SourceKind.MAIN, 5, "1.3",
         setOf(SourceCapability.HOME, SourceCapability.SEARCH, SourceCapability.ACCOUNT, SourceCapability.PLAYBACK,
             SourceCapability.PLAYLIST, SourceCapability.ARTIST, SourceCapability.ALBUM, SourceCapability.RADIO,
             SourceCapability.LYRICS), false, true,

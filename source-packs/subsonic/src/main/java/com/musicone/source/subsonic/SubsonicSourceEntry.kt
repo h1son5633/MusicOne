@@ -9,7 +9,7 @@ import com.musicone.source.subsonic.internal.*
  * 页面全部使用宿主公共主模板，包内只提供资料、播放和服务器管理页。
  */
 class SubsonicSourceEntry : SourceEntry {
-    override val descriptor = SourceDescriptor(SUBSONIC_SOURCE_ID, "Subsonic", SourceKind.MAIN, 2, "0.2",
+    override val descriptor = SourceDescriptor(SUBSONIC_SOURCE_ID, "Subsonic", SourceKind.MAIN, 3, "0.2",
         setOf(SourceCapability.HOME, SourceCapability.SEARCH, SourceCapability.ACCOUNT, SourceCapability.PLAYBACK,
             SourceCapability.PLAYLIST, SourceCapability.ARTIST, SourceCapability.ALBUM, SourceCapability.RADIO,
             SourceCapability.LYRICS), useCustomPages = false, requiresLogin = true,

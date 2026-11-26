@@ -11,7 +11,7 @@ import java.util.Locale
 
 internal const val WEBDAV_SOURCE_ID = "com.musicone.source.webdav"
 internal const val WEBDAV_SOURCE_NAME = "WebDAV"
-internal const val WEBDAV_VERSION_CODE = 1L
+internal const val WEBDAV_VERSION_CODE = 2L
 internal const val WEBDAV_VERSION_NAME = "0.1"
 internal const val WEBDAV_MIN_HOST_VERSION_CODE = 6
 internal const val WEBDAV_MIN_HOST_VERSION_NAME = "0.4.0-鲜花饼"
