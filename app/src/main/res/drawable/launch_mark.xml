@@ -1,9 +1,9 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="288dp" android:height="288dp"
     android:viewportWidth="288" android:viewportHeight="288">
-    <!-- 静态音频波形：11 根短线，比例与 HomeLaunchAnimation 的汇聚动画一致；系统启动屏先显示此静止帧。 -->
-    <path android:pathData="M22,138 L22,150 M46.4,134.4 L46.4,153.6 M70.8,124.8 L70.8,163.2 M95.2,111 L95.2,177 M119.6,96 L119.6,192 M144,84 L144,204 M168.4,96 L168.4,192 M192.8,111 L192.8,177 M217.2,124.8 L217.2,163.2 M241.6,134.4 L241.6,153.6 M266,138 L266,150"
+    <!-- 静态音频波形：11 根短线，比例与 HomeLaunchAnimation 的动画一致；图形只占画布中央约 42%，四周留白——系统启动屏的图标框会裁剪过大的图形，留白后整幅波形才不会被切边。 -->
+    <path android:pathData="M83,141 L83,147 M95.2,139.2 L95.2,148.8 M107.4,134.4 L107.4,153.6 M119.6,127.5 L119.6,160.5 M131.8,120 L131.8,168 M144,114 L144,174 M156.2,120 L156.2,168 M168.4,127.5 L168.4,160.5 M180.6,134.4 L180.6,153.6 M192.8,139.2 L192.8,148.8 M205,141 L205,147"
         android:fillColor="@android:color/transparent"
-        android:strokeColor="@color/launch_wave" android:strokeWidth="15"
+        android:strokeColor="@color/launch_wave" android:strokeWidth="7.5"
         android:strokeLineCap="round" />
 </vector>

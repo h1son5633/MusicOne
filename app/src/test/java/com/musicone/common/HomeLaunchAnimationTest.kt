@@ -13,12 +13,12 @@ class HomeLaunchAnimationTest {
     }
 
     @Test
-    fun timelineRunsLightHoldThenExit() {
-        assertEquals(0f, HomeLaunchTimeline.light(0), 0f)
-        assertEquals(1f, HomeLaunchTimeline.light(HomeLaunchTimeline.LightMillis), 0f)
+    fun timelineRunsGatherThenExit() {
+        assertEquals(0f, HomeLaunchTimeline.gather(0), 0f)
+        assertEquals(1f, HomeLaunchTimeline.gather(HomeLaunchTimeline.GatherMillis), 0f)
         assertEquals(0f, HomeLaunchTimeline.exit(HomeLaunchTimeline.ExitStartMillis), 0f)
         assertEquals(1f, HomeLaunchTimeline.exit(HomeLaunchTimeline.TotalMillis), 0f)
-        assertEquals(1250L, HomeLaunchTimeline.TotalMillis)
+        assertEquals(580L, HomeLaunchTimeline.TotalMillis)
     }
 
     @Test
@@ -48,10 +48,10 @@ class HomeLaunchAnimationTest {
     }
 
     @Test
-    fun longFrameOnlyAdvancesOneStep() {
+    fun longFrameAdvancesInRealTime() {
         val clock = HomeLaunchClock(gate(systemSplash = false))
         clock.advance(2_000_000_000L)
-        assertEquals(34L, clock.elapsedMillis)
+        assertEquals(2000L, clock.elapsedMillis)
     }
 
     @Test

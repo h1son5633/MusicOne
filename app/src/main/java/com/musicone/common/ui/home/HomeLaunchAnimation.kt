@@ -54,7 +54,7 @@ internal class HomeLaunchGate {
     }
 }
 
-/** 启动动画的时钟。主线程卡顿时每帧最多前进一小步，动画只会暂停，不会被跳过。 */
+/** 启动动画的时钟。按真实时间前进：主线程卡顿丢帧时动画跳过中间帧，但总时长不变，不拖成慢动作。 */
 internal class HomeLaunchClock(private val gate: HomeLaunchGate) {
     private var elapsedNanos by mutableLongStateOf(0L)
     private var waitedNanos = 0L
@@ -63,7 +63,7 @@ internal class HomeLaunchClock(private val gate: HomeLaunchGate) {
     val finished: Boolean get() = elapsedMillis >= HomeLaunchTimeline.TotalMillis
 
     fun advance(frameNanos: Long) {
-        val step = frameNanos.coerceIn(0L, MaxFrameNanos)
+        val step = frameNanos.coerceAtLeast(0L)
         if (gate.awaitingSplash) {
             // 一直等不到交接，说明本次没有系统窗口，直接开始。
             waitedNanos += step
@@ -73,12 +73,11 @@ internal class HomeLaunchClock(private val gate: HomeLaunchGate) {
     }
 
     private companion object {
-        const val MaxFrameNanos = 34_000_000L
         const val SplashWaitNanos = 400_000_000L
     }
 }
 
-/** 绘制音频波形：11 根短线从两侧向中间汇聚成波形符号；比例须与 launch_mark.xml 的静态图一致。 */
+/** 绘制音频波形：11 根短线一开始全部是最短的小线，位置不动，随后从中间向两侧依次长成波形；比例须与 launch_mark.xml 的静态图一致。 */
 internal class HomeLaunchMark {
     fun draw(scope: DrawScope, elapsedMillis: Long, background: Color, ink: Color) = with(scope) {
         val exit = HomeLaunchTimeline.exit(elapsedMillis)
@@ -91,11 +90,10 @@ internal class HomeLaunchMark {
         val scale = 1f + .05f * exit
         Heights.forEachIndexed { index, fraction ->
             val distance = kotlin.math.abs(index - CenterIndex)
-            // 外侧线条略滞后于中心，形成从两侧向中间聚拢的层次。
-            val local = (gather * 1.18f - distance * .045f).coerceIn(0f, 1f)
-            val spread = 1f + (1f - local) * 1.05f
-            val height = maxHeight * fraction * (.3f + .7f * local) * scale
-            val x = center.x + (index - CenterIndex) * step * spread * scale
+            // 中间的线先长，外侧按距中心的距离依次跟上。
+            val local = (gather * 1.25f - distance * .05f).coerceIn(0f, 1f)
+            val height = maxHeight * (MinFraction + (fraction - MinFraction) * local) * scale
+            val x = center.x + (index - CenterIndex) * step * scale
             drawLine(
                 color = ink,
                 start = Offset(x, center.y - height / 2f),
@@ -109,6 +107,7 @@ internal class HomeLaunchMark {
 
     private companion object {
         val Heights = floatArrayOf(.10f, .16f, .32f, .55f, .80f, 1f, .80f, .55f, .32f, .16f, .10f)
+        const val MinFraction = .10f
         const val CenterIndex = 5
         val BarStep = 12.2.dp
         val BarWidth = 7.5.dp
