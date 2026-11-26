@@ -109,8 +109,9 @@ private fun MiniPlayerSurface(
             .padding(horizontal = 12.dp, vertical = MiniPlayerLayoutMetrics.outerPadding).then(modifier),
         shape = RoundedCornerShape(barStyle.surfaceCorner),
         blurRadius = 18.dp,
-        containerColor = immersiveVisual?.panelColor
-            ?: if (dark) Color(0xFF242526).copy(alpha = .82f) else Color.White.copy(alpha = barStyle.lightTint),
+        // 与导航胶囊一致：深色背景时罩层减淡，让背景透出来一些，不要压成纯黑。
+        containerColor = immersiveVisual?.let { if (it.useDarkForeground) it.panelColor else it.panelColor.copy(alpha = .16f) }
+            ?: if (dark) Color(0xFF242526).copy(alpha = .58f) else Color.White.copy(alpha = barStyle.lightTint),
         fallbackColor = immersiveVisual?.panelColor
             ?: if (dark) Color(0xFF242526) else Color(0xFFF6F7F8),
         border = androidx.compose.foundation.BorderStroke(

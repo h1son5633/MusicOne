@@ -17,9 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
-@Composable internal fun NeteaseSearchContent(owner: NeteasePackageState, actions: NeteaseTrackActions) {
+@Composable internal fun NeteaseSearchContent(owner: NeteasePackageState, actions: NeteaseTrackActions, overlay: Boolean = false) {
     if (owner.account == null) { NeteaseSignedOut(owner, "登录后搜索网易云音乐"); return }
-    Column(Modifier.fillMaxSize().padding(top = 82.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding())) {
+    // 展开层呈现时表面已盖住页头，顶部只需状态栏加少量留白；页内呈现时要让开宿主页头。
+    Column(Modifier.fillMaxSize().padding(top = (if (overlay) 16.dp else 82.dp) + WindowInsets.statusBars.asPaddingValues().calculateTopPadding())) {
         OutlinedTextField(owner.searchQuery, { owner.searchQuery = it }, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             label = { Text("搜索歌曲、歌手") }, singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { owner.search(owner.searchQuery) }),

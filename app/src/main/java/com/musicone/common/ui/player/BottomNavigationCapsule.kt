@@ -143,8 +143,9 @@ internal fun BottomCapsule(
             modifier = Modifier.width(metrics.width),
             shape = RoundedCornerShape(metrics.outerRadius),
             blurRadius = if (rowStyle) 18.dp else 20.dp,
-            containerColor = immersiveVisual?.panelColor
-                ?: if (dark) Color(0xFF242526).copy(alpha = .82f) else Color.White.copy(alpha = lightTint),
+            // 深色背景时面板别压得太黑：沉浸面板的黑色罩层减半、普通深色底也降透明，让模糊后的背景透出来一些。
+            containerColor = immersiveVisual?.let { if (it.useDarkForeground) it.panelColor else it.panelColor.copy(alpha = .16f) }
+                ?: if (dark) Color(0xFF242526).copy(alpha = .58f) else Color.White.copy(alpha = lightTint),
             fallbackColor = immersiveVisual?.panelColor
                 ?: if (dark) Color(0xFF242526) else Color(0xFFF3F4F6),
             border = androidx.compose.foundation.BorderStroke(

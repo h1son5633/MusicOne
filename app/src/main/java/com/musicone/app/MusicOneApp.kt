@@ -81,6 +81,7 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
     val pageInteraction = remember { PageInteractionActivity() }
     val rootSwipeLocks = remember { RootPageSwipeLocks() }
     val settingsMotion = rememberPageMotion(false, enterAnimation = PlayerEnterAnimation, exitAnimation = PlayerReturnAnimation)
+    val sourceSearchMotion = rememberPageMotion(false)
     LaunchedEffect(platformState.selectedSource, platformState.account?.userId) { entityNavigation.clear() }
     val barMeasurements = remember { BottomBarMeasurements() }
     val playerMotion = rememberPageMotion(navigation.playerExpanded,
@@ -463,6 +464,9 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
                 settingsBackLayer ?: backdropLayer, if (settingsBackLayer != null) entitySceneBounds else backdropBounds)
             sourcePages.Back(!publicRootSearch.mounted && !publicPages.mounted && !publicSceneDetail && settingsNavigation.destination == SettingsDestination.CLOSED && !playerMotion.mounted)
             PlayerQueueHost(queueState, viewModel)
+            sourcePages.SearchOverlay(sourceSearchMotion,
+                { mainSearchMotion.origin.takeIf { !it.isEmpty } ?: settingsNavigation.origin },
+                barMeasurements.detailInset)
             HomeLaunchOverlay(
                 launch = homeLaunch,
                 settingsOrigin = { settingsNavigation.origin },

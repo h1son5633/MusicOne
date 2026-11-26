@@ -63,7 +63,10 @@ class NeteaseSourceEntry : SourceEntry, SourceMembershipProvider {
                 val background = rememberNeteaseBackgroundUiController(visualService::refresh)
                 val visiblePage = owner.navigation.visible(route.page.lowercase(), active)
                 Box(Modifier.fillMaxSize()) {
-                    when (visiblePage) {
+                    if (route.page == "search-overlay") {
+                        // 宿主展开层呈现：直接画搜索页，不动包内导航栈，底下的根页保持原样。
+                        NeteaseSearchContent(owner, trackActions, overlay = true)
+                    } else when (visiblePage) {
                         "authentication" -> loginPage.Content()
                         "my" -> {
                             key(owner.dataRevision) {
