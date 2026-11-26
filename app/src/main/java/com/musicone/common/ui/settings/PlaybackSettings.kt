@@ -113,7 +113,7 @@ private fun usbOutputDescription(enabled: Boolean, status: UsbAudioOutputSnapsho
         .ifBlank { "已开启，等待播放或连接设备" }
 }
 
-/** 一级分组“关于”：版本信息、开发者与版本更新。 */
+/** 一级分组“关于”：版本信息与项目仓库（个人改版无版本更新条目）。 */
 @Composable
 internal fun AboutSettings() {
     val context = LocalContext.current
@@ -126,8 +126,7 @@ internal fun AboutSettings() {
                 SettingsOptimizationNotice()
             }
         }
-        // 开发者条目是自带内边距的列表项，不再额外缩进。
-        SettingsGroup("开发者") { DeveloperCredits() }
-        VersionUpdateSettings()
+        // 仓库条目是自带内边距的列表项，不再额外缩进。
+        SettingsGroup("项目仓库") { DeveloperCredits() }
     }
 }

@@ -55,7 +55,8 @@ internal fun PrimaryPageActionButton(page: MusicOnePage, pagerPosition: () -> Fl
                 backdropLayer = backdropLayer,
                 backdropBounds = backdropBounds,
                 // 搜索展开时由搜索层原位接管按钮，不能跟随首页标题上移。
-                modifier = Modifier.size(48.dp).onGloballyPositioned { if (localMode || page == MusicOnePage.MY) onSettingsBounds(it.boundsInRoot()) }
+                // 按钮边界在每个页面都上报：设置页拿它作展开原点，搜索展开也从同一按钮长出。
+                modifier = Modifier.size(48.dp).onGloballyPositioned { onSettingsBounds(it.boundsInRoot()) }
                     .graphicsLayer {
                         alpha = if (searchProgress() > 0f) 0f else if (localMode || page == MusicOnePage.MY) {
                             playerGlassAlpha(settingsProgress())

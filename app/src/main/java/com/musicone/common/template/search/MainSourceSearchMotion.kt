@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Outline
@@ -25,6 +26,8 @@ import kotlinx.coroutines.CancellationException
 internal class MainSourceSearchMotion {
     val menu = Animatable(0f)
     val full = Animatable(0f)
+    /** 搜索按钮在窗口中的真实边界，展开动画从这里长出（与设置页 ExpandingPageSurface 同一套原点逻辑）。 */
+    var origin: Rect = Rect.Zero
     var fullMoving by mutableStateOf(false)
     var resultsReady by mutableStateOf(false)
     var backdropSnapshot by mutableStateOf<ImageBitmap?>(null)
@@ -95,18 +98,28 @@ internal fun searchGeometry(width: Dp, height: Dp, state: MainSourceSearchState,
         if (state.query.isBlank()) (if (state.supportsHotSearch) 300f else 204f) else searchSuggestionHeight(state.suggestions.size,
             state.suggestionError != null, maxOf(48f, 20f * density.fontScale + 28f))).dp
     val menuHeight by animateDpAsState(target, musicMotion(360), label = "历史联想菜单高度")
+    // 展开原点 = 搜索按钮的真实边界（菜单容器已垫状态栏高度，纵坐标换算到容器内）；
+    // 还没拿到边界时退回旧近似（右上 48dp 圆）。
+    val origin = motion.origin
+    val hasOrigin = !origin.isEmpty
+    val statusTop = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
+    val startRight = if (hasOrigin) width - with(density) { origin.right.toDp() } else gutter
+    val startTop = if (hasOrigin) (with(density) { origin.top.toDp() } - statusTop).coerceAtLeast(0.dp) else 10.dp
+    val startWidth = if (hasOrigin) with(density) { origin.width.toDp() } else 48.dp
+    val startHeight = if (hasOrigin) with(density) { origin.height.toDp() } else 48.dp
     return {
     val open = motion.menu.value
     val full = motion.full.value
     val menuSize = if (state.full || motion.fullMoving) {
         motion.frozenMenuSize ?: (menuWidth to menuHeight).also { motion.frozenMenuSize = it }
     } else (menuWidth to menuHeight).also { motion.frozenMenuSize = it }
-    val expandedWidth = 48.dp + (menuSize.first - 48.dp) * open
-    val expandedHeight = 48.dp + (menuSize.second - 48.dp) * open
+    val expandedWidth = startWidth + (menuSize.first - startWidth) * open
+    val expandedHeight = startHeight + (menuSize.second - startHeight) * open
     MainSourceSearchGeometry(
         expandedWidth + (width - expandedWidth) * full,
         expandedHeight + (height - expandedHeight) * full,
-        gutter * (1f - full), 10.dp * (1f - full), 26.dp * (1f - full),
+        startRight * (1f - full), startTop * (1f - full),
+        ((startHeight / 2) * (1f - open) + 26.dp * open) * (1f - full),
         menuSize.first, menuSize.second,
     )
     }

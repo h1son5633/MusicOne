@@ -17,14 +17,8 @@ import androidx.lifecycle.withStarted
 import androidx.lifecycle.ViewModelProvider
 
 class MainActivity : ComponentActivity() {
-    private val updates by lazy { ViewModelProvider(this)[AppUpdateViewModel::class.java] }
     private val phoneOrientation by lazy { PhoneActivityOrientationPolicy(this) }
     private val launchWindow by lazy { HomeLaunchWindow(this) }
-
-    override fun onUserInteraction() {
-        super.onUserInteraction()
-        updates.finishOpening()
-    }
 
     // ComponentActivity 将该平台回调标为库内 API，但 USB 独占音量键需要在 Compose 视图前优先处理。
     @SuppressLint("RestrictedApi")
@@ -36,7 +30,6 @@ class MainActivity : ComponentActivity() {
         setTheme(R.style.Theme_MusicOne)
         super.onCreate(savedInstanceState)
         phoneOrientation.apply(resources.configuration)
-        lifecycle.addObserver(AppUpdateLifecycle(updates))
         enableEdgeToEdge()
         if (android.os.Build.VERSION.SDK_INT >= 29) {
             // 三键导航透出应用背景；此开关不改变手势导航的透明效果。
@@ -65,7 +58,8 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalLyricAnimationClock provides lyricClock,
                 LocalLyricFrameDriver provides lyricFrames,
                 LocalPlayerFrameRatePolicy provides playerFrameRate) {
-                MusicOneTheme { AppUpdateHost(updates) { com.musicone.sourceintegration.SourceBootstrap { MusicOneApp() } } }
+                // 个人改版不接入官方版本更新：不检查、不弹窗、不提供下载入口，避免被官方版覆盖。
+                MusicOneTheme { com.musicone.sourceintegration.SourceBootstrap { MusicOneApp() } }
             }
         }
     }

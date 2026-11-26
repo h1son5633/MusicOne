@@ -20,10 +20,13 @@ internal data class DeveloperCredit(
     val name: String,
     val account: String,
     val profileUrl: String,
+    val linkUrl: String = profileUrl,
 )
 
+// 开发者条目改为两个仓库：本改版的仓库在前，原项目主仓库在后；头像取仓库所有者头像，点击直达仓库页。
 internal val developerCredits = listOf(
-    DeveloperCredit("ShuyunR", "HGODLK", "https://github.com/HGODLK"),
+    DeveloperCredit("我的仓库", "h1son5633/MusicOne", "https://github.com/h1son5633", "https://github.com/h1son5633/MusicOne"),
+    DeveloperCredit("主仓库", "HGODLK/MusicOne", "https://github.com/HGODLK", "https://github.com/HGODLK/MusicOne"),
 )
 
 @Composable
@@ -51,10 +54,10 @@ internal fun DeveloperCredits() {
             // 放在设置卡片里，透出卡片底色。
             colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
             modifier = Modifier.clickable(
-                onClickLabel = "打开 ${developer.name} 的 GitHub 主页",
+                onClickLabel = "打开${developer.name}",
                 role = Role.Button,
             ) {
-                uriHandler.openUri(developer.profileUrl)
+                uriHandler.openUri(developer.linkUrl)
             },
         )
     }

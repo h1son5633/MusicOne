@@ -383,7 +383,10 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
                             }
                         },
                         onSettings = publicRootHeader?.onSettings ?: settingsNavigation::openSettings,
-                        onSettingsBounds = publicRootHeader?.onSettingsBounds ?: { settingsNavigation.origin = it },
+                        onSettingsBounds = publicRootHeader?.onSettingsBounds ?: {
+                            settingsNavigation.origin = it
+                            mainSearchMotion.origin = it
+                        },
                         motionVisibility = {
                             primaryHeaderMotionVisibility(
                                 publicScene?.playlists?.motion?.value ?: recommendationNavigation.motion.value,
