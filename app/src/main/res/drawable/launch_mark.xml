@@ -1,12 +1,9 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="288dp" android:height="288dp"
     android:viewportWidth="288" android:viewportHeight="288">
-    <!-- 图标路径放大到 M 宽 120dp，须与 HomeLaunchAnimation 的 M 位置和大小一致。 -->
-    <group android:scaleX="2.16216" android:scaleY="2.16216"
-        android:translateX="27.2432" android:translateY="27.2432">
-        <path android:pathData="M30,66 L37,43 C39,36 45,36 48,43 L54,57 L60,43 C63,36 69,36 71,43 L77,62 C80,73 65,75 62,66"
-            android:fillColor="@android:color/transparent"
-            android:strokeColor="@color/launch_mark" android:strokeWidth="8.5"
-            android:strokeLineCap="round" android:strokeLineJoin="round" />
-    </group>
+    <!-- 静态音频波形：11 根短线，比例与 HomeLaunchAnimation 的汇聚动画一致；系统启动屏先显示此静止帧。 -->
+    <path android:pathData="M22,138 L22,150 M46.4,134.4 L46.4,153.6 M70.8,124.8 L70.8,163.2 M95.2,111 L95.2,177 M119.6,96 L119.6,192 M144,84 L144,204 M168.4,96 L168.4,192 M192.8,111 L192.8,177 M217.2,124.8 L217.2,163.2 M241.6,134.4 L241.6,153.6 M266,138 L266,150"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@color/launch_wave" android:strokeWidth="15"
+        android:strokeLineCap="round" />
 </vector>

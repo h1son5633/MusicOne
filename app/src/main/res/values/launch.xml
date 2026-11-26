@@ -7,5 +7,7 @@
     <color name="launch_mark_dark">#4DF1F1F1</color>
     <color name="launch_background">@color/launch_background_light</color>
     <color name="launch_mark">@color/launch_mark_light</color>
+    <!-- 启动波形线条：浅色为纯黑（配白底），深色在 values-night 反为纯白。 -->
+    <color name="launch_wave">#FF000000</color>
     <bool name="launch_light_bars">true</bool>
 </resources>

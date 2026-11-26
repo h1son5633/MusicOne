@@ -12,7 +12,7 @@ internal class HomeLaunchWindow(private val activity: Activity) {
     fun prepare() {
         val systemSplash = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         val animated = gate.prepare(ExperiencePreferences.options.reduceMotion, systemSplash)
-        // 两边都是同一位置的灰色 M，直接移除系统窗口，不做系统默认的退出动画。
+        // 系统窗口与 App 内动画是同一位置的波形图，直接移除系统窗口，不做系统默认的退出动画。
         if (animated && systemSplash) activity.splashScreen.setOnExitAnimationListener {
             it.remove()
             gate.splashRemoved()
