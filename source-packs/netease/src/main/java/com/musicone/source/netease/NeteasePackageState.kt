@@ -156,7 +156,8 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
     }
     fun openPlaylist(value: NeteasePlaylist) {
         environment.host.contentUi?.let { shared ->
-            shared.openCollection(value.toCollection(account?.userId)) { if (account != null) refreshLibrary() }
+            // 「我的」页已改为手动刷新：从歌单页返回时不再自动刷新歌单列表（此前 onClosed 回调会触发一次）。
+            shared.openCollection(value.toCollection(account?.userId))
             return
         }
         selectedPlaylist = value; playlistPage = null; open("playlist"); loadPlaylist(false)

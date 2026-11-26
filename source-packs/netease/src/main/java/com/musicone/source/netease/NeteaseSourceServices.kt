@@ -14,7 +14,7 @@ import org.json.JSONObject
 
 internal class NeteaseSourceServices(private val state: () -> NeteasePackageState) : SourceDiscovery, SourceDailyRecommendations, SourceSearch,
     SourceCollections, SourceFavorites, SourceCollectionEditing, SourceMediaPlayback, SourceLyricProvider, SourceTrackTheme, SourcePlaybackBehavior, SourceLyricBehavior, SourceCollectionReturnBehavior, SourcePlaybackSessionProvider {
-    override val refreshLibraryAfterAnyReturn = true
+    // 不再声明 refreshLibraryAfterAnyReturn：宿主从歌单页返回时不要同步刷新曲库，「我的」页只走手动刷新（SDK 默认 false）。
     private val listenReporter = NeteaseListenReporter(state)
     override val playbackSessions: SourcePlaybackSessionObserver get() = listenReporter
     override val preserveVerbatimFallback = true
