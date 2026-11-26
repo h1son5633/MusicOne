@@ -72,9 +72,8 @@ internal class NeteaseSourceServices(private val state: () -> NeteasePackageStat
     }
     override suspend fun detail(collection: SourceCollection): SourceCollection = read { owner, cookie, account ->
         val netease = collection.toNetease()
-        val page = owner.cachedFirstPage(netease)
-            ?: owner.api.playlistPage(netease, cookie, account?.hasVipAccess == true, null).also { owner.storeFirstPage(netease, it) }
-        page.playlist.toCollection(account?.userId)
+        val playlist = owner.cachedFirstPage(netease)?.playlist ?: owner.api.playlistShell(netease, cookie)
+        playlist.toCollection(account?.userId)
     }
     override suspend fun tracks(collection: SourceCollection, request: SourceCursorRequest): SourcePage<SourceTrackDetails> = read { owner, cookie, account ->
         val cursor = request.cursor?.let { encoded -> JSONObject(encoded).let { value ->

@@ -245,6 +245,14 @@ internal class NeteaseApiClient(
         return response.parsePlaylistShell().second.mapTo(hashSetOf()) { "netease-$it" }
     }
 
+    /** 只取歌单壳（标题、封面、曲数），不拉任何歌曲详情：宿主打开歌单页时会单独再调一次详情，
+     * 以前这里走整页加载等于把第一页的两次请求白白多跑一遍，歌迟迟不出来。 */
+    fun playlistShell(playlist: NeteasePlaylist, cookie: String): NeteasePlaylist {
+        val response = getJson("$PLAYLIST_API?id=${playlist.remoteId().formEncoded()}&n=0&s=0", cookie)
+        response.requireSuccess("歌单加载失败")
+        return response.parsePlaylistShell().first.copy(isOwned = playlist.isOwned)
+    }
+
     fun playbackSource(trackId: String, cookie: String, quality: NeteaseQuality): NeteasePlaybackAddress {
         requireNumericId(trackId, "歌曲")
         var accountFailure: Exception? = null

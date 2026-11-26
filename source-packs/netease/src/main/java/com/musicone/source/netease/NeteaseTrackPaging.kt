@@ -1,6 +1,6 @@
 package com.musicone.source.netease
 
-internal const val PLAYLIST_TRACK_PAGE_SIZE = 100
+internal const val PLAYLIST_TRACK_PAGE_SIZE = 50
 
 internal data class NeteaseTrackCursor(val offset: Int, val trackIds: List<String>? = null)
 
