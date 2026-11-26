@@ -200,14 +200,30 @@ internal class NeteaseApiClient(
     fun scrobble(cookie: String, trackId: String, seconds: Long) {
         if (cookie.isBlank() || seconds <= 0) return
         requireNumericId(trackId, "歌曲")
+        // 听歌打卡须走 weapi 且 json 字段齐全（download/end/type/wifi），
+        // 否则接口虽返回 200，听歌排行并不入账（开源客户端通用格式，2026-11-26 核对）。
         val log = JSONObject().put("action", "play").put("json", JSONObject()
-            .put("id", trackId.toLong()).put("sourceId", 0).put("time", seconds))
-        postEapi(
-            WEBLOG_EAPI,
+            .put("download", 0).put("end", "playend")
+            .put("id", trackId.toLong()).put("sourceId", 0)
+            .put("time", seconds).put("type", "song").put("wifi", 0))
+        postWeapi(
+            WEBLOG_WEAPI,
             JSONObject().put("logs", JSONArray().put(log).toString()),
             cookie,
             "听歌打卡失败",
         )
+    }
+
+    private fun postWeapi(url: String, payload: JSONObject, cookie: String, fallback: String): JSONObject {
+        val csrf = Regex("__csrf=([^;]+)").find(cookie)?.groupValues?.get(1).orEmpty()
+        val (params, encSecKey) = NeteaseCrypto.encryptWeapi(payload.toString())
+        val response = postForm(
+            "$url?csrf_token=${csrf.formEncoded()}",
+            mapOf("params" to params, "encSecKey" to encSecKey),
+            cookie,
+        ).body
+        response.requireSuccess(fallback)
+        return response
     }
 
     fun changePlaylistTrack(cookie: String, playlistId: String, trackId: String, add: Boolean) {
@@ -422,7 +438,7 @@ internal class NeteaseApiClient(
         private const val PLAYBACK_LEGACY_EAPI = "https://interface.music.163.com/eapi/song/enhance/player/url"
         private const val PLAYBACK_EAPI = "https://interface3.music.163.com/eapi/song/enhance/player/url/v1"
         private const val LIKE_EAPI = "https://interface3.music.163.com/eapi/song/like"
-        private const val WEBLOG_EAPI = "https://interface.music.163.com/eapi/feedback/weblog"
+        private const val WEBLOG_WEAPI = "https://music.163.com/weapi/feedback/weblog"
         private const val LYRIC_API = "https://music.163.com/api/song/lyric"
         private const val LYRIC_EAPI = "https://interfacepc.music.163.com/eapi/song/lyric/v1"
     }
