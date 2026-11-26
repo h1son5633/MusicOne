@@ -67,7 +67,7 @@ class NeteaseSourceEntry : SourceEntry, SourceMembershipProvider {
                         "authentication" -> loginPage.Content()
                         "my" -> {
                             key(owner.dataRevision) {
-                                LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { if (owner.account != null) owner.refreshLibrary() }
+                                LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { owner.ensureLibrary() }
                             }
                             NeteaseProfileBackdrop(background.visual, Modifier.fillMaxSize())
                             NeteaseAdaptiveForeground(background.visual) { NeteaseMyScreen(owner.account, owner.catalog, background.visual, owner.bottomInset.dp,

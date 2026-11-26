@@ -1,9 +1,6 @@
 package com.musicone
 
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -51,29 +48,6 @@ internal class HomeLaunchGate {
 
     companion object {
         val process = HomeLaunchGate()
-    }
-}
-
-/** 启动动画的时钟。按真实时间前进：主线程卡顿丢帧时动画跳过中间帧，但总时长不变，不拖成慢动作。 */
-internal class HomeLaunchClock(private val gate: HomeLaunchGate) {
-    private var elapsedNanos by mutableLongStateOf(0L)
-    private var waitedNanos = 0L
-
-    val elapsedMillis: Long get() = elapsedNanos / 1_000_000L
-    val finished: Boolean get() = elapsedMillis >= HomeLaunchTimeline.TotalMillis
-
-    fun advance(frameNanos: Long) {
-        val step = frameNanos.coerceAtLeast(0L)
-        if (gate.awaitingSplash) {
-            // 一直等不到交接，说明本次没有系统窗口，直接开始。
-            waitedNanos += step
-            if (waitedNanos < SplashWaitNanos) return
-        }
-        elapsedNanos += step
-    }
-
-    private companion object {
-        const val SplashWaitNanos = 400_000_000L
     }
 }
 

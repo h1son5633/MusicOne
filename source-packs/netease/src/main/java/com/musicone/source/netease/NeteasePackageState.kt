@@ -54,6 +54,15 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
     var loading by mutableStateOf(false)
     private var homePage = 0
     private var searchJob: Job? = null
+    // 歌单第一页缓存：重复进同一歌单时直接沿用（5 分钟内），不再每次都重新请求整页。
+    private data class CachedTrackPage(val atMs: Long, val page: NeteaseTrackPage)
+    private val playlistCache = mutableMapOf<String, CachedTrackPage>()
+    private fun playlistCacheKey(playlist: NeteasePlaylist) = playlist.remoteKey?.takeIf(String::isNotBlank) ?: playlist.id
+    fun cachedFirstPage(playlist: NeteasePlaylist): NeteaseTrackPage? =
+        playlistCache[playlistCacheKey(playlist)]?.takeIf { System.currentTimeMillis() - it.atMs < 5 * 60 * 1000L }?.page
+    fun storeFirstPage(playlist: NeteasePlaylist, page: NeteaseTrackPage) {
+        playlistCache[playlistCacheKey(playlist)] = CachedTrackPage(System.currentTimeMillis(), page)
+    }
 
     fun check(expected: Long = revision.get()) { if (closed || revision.get() != expected) throw CancellationException("网易云任务已失效") }
     fun credential(): String = preferences.getString("session_netease_credential", "").orEmpty()
@@ -94,6 +103,7 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
     private fun resetPageData() {
         homePlaylists.clear(); homeTracks.clear(); library.clear(); homePage = 0
         searchTracks = emptyList(); selectedPlaylist = null; playlistPage = null
+        playlistCache.clear()
         dataRevision = revision.get()
     }
     fun open(destination: String) { navigation.open(destination); message = null }
@@ -130,6 +140,11 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
             withContext(Dispatchers.IO) { api.userPlaylists(cookie, user) }
         }
     }
+    /** 「我的」页改为手动刷新：只有尚无数据时才自动加载一次，之后进页面不再自己刷新，刷新走页面上的刷新按钮。 */
+    fun ensureLibrary() {
+        if (account == null || library.value.isNotEmpty() || library.loading) return
+        refreshLibrary()
+    }
     fun search(query: String) {
         searchQuery = query; searchJob?.cancel()
         searchJob = action {
@@ -150,11 +165,15 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
         val playlist = selectedPlaylist ?: return@action
         val previous = if (next) playlistPage else null
         val expected = revision.get(); val cookie = credential(); val vip = account?.hasVipAccess == true
+        if (!next) cachedFirstPage(playlist)?.let { cached ->
+            playlistPage = cached; selectedPlaylist = cached.playlist; return@action
+        }
         loading = true
         try {
             val incoming = withContext(Dispatchers.IO) { api.playlistPage(playlist, cookie, vip, previous?.next) }
             check(expected); if (selectedPlaylist?.id != playlist.id) return@action
             playlistPage = mergePlaylistTrackPage(previous, incoming); selectedPlaylist = playlistPage!!.playlist
+            if (!next) storeFirstPage(playlist, playlistPage!!)
         } finally { loading = false }
     }
     fun play(tracks: List<NeteaseTrack>, index: Int = 0) { check(); environment.host.playDetailed(tracks.map { it.toDetails(account?.userId) }, index) }

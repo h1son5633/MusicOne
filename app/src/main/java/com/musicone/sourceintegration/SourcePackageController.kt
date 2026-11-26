@@ -189,8 +189,12 @@ internal class SourcePackageController private constructor(private val context: 
         /** 其余音源延时补启动的等待时间：先保证冷启动与首页使用，之后再逐个补齐。 */
         private const val DEFERRED_START_DELAY_MILLIS = 300_000L
 
-        /** 只允许手动启动的音源：自动路径（开机优先加载、全新安装首次激活、延时补启动）一律跳过。 */
-        private val MANUAL_ONLY_SOURCE_IDS = setOf(MusicSource.QQ.id)
+        /** 只允许手动启动的音源：自动路径（开机优先加载、全新安装首次激活、延时补启动）一律跳过。
+         * 除当前音源外，自动加载只保留酷狗（不登录也能用）；其余音源用户主动选时才启动。 */
+        private val MANUAL_ONLY_SOURCE_IDS = setOf(
+            MusicSource.QQ.id, MusicSource.BILIBILI.id,
+            "com.musicone.source.subsonic", "com.musicone.source.webdav",
+        )
 
         @Volatile private var instance: SourcePackageController? = null
         fun current(): SourcePackageController? = instance

@@ -116,16 +116,9 @@ internal class NeteaseApiClient(
     fun search(query: String, cookie: String, hasVipAccess: Boolean = false): List<NeteaseTrack> {
         val normalized = query.trim()
         if (normalized.isBlank()) return emptyList()
-        val forward = JSONObject()
-            .put("method", "POST")
-            .put("url", "http://music.163.com/api/cloudsearch/pc")
-            .put("params", JSONObject().put("s", normalized).put("type", 1).put("offset", 0).put("limit", 20))
-        val response = postForm(
-            url = SEARCH_API,
-            values = mapOf("eparams" to NeteaseCrypto.encryptLinux(forward.toString())),
-            cookie = cookie,
-        ).body
-        response.requireSuccess("搜索失败")
+        // 旧的 linux/forward 转发接口已被网易云停用（恒 502），改走与播放、歌词相同的 eapi 通道。
+        val payload = JSONObject().put("s", normalized).put("type", 1).put("offset", 0).put("limit", 30)
+        val response = postEapi(SEARCH_EAPI, payload, cookie, "搜索失败")
         val tracks = response.parseSearchTracks(hasVipAccess)
         // 搜索缺少歌曲权限时批量补详情，未知状态保留可重试，不能按 VIP 标签猜测版权。
         val missing = response.optJSONObject("result")?.optJSONArray("songs")?.let { songs ->
@@ -404,7 +397,7 @@ internal class NeteaseApiClient(
 
     companion object {
         private val fallbackDeviceId = java.util.UUID.randomUUID().toString()
-        private const val SEARCH_API = "https://music.163.com/api/linux/forward"
+        private const val SEARCH_EAPI = "https://music.163.com/eapi/cloudsearch/pc"
         private const val ACCOUNT_API = "https://music.163.com/api/nuser/account/get"
         private const val USER_DETAIL_API = "https://music.163.com/api/v1/user/detail"
         private const val QR_KEY_API = "https://interface.music.163.com/api/login/qrcode/unikey"

@@ -6,8 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeLaunchAnimationTest {
-    private val frame = 16_000_000L
-
     private fun gate(systemSplash: Boolean) = HomeLaunchGate().also {
         it.prepare(reduceMotion = false, systemSplash = systemSplash)
     }
@@ -45,33 +43,6 @@ class HomeLaunchAnimationTest {
         assertFalse(gate.prepare(reduceMotion = true, systemSplash = true))
         assertFalse(gate.takeAnimation())
         assertFalse(gate.awaitingSplash)
-    }
-
-    @Test
-    fun longFrameAdvancesInRealTime() {
-        val clock = HomeLaunchClock(gate(systemSplash = false))
-        clock.advance(2_000_000_000L)
-        assertEquals(2000L, clock.elapsedMillis)
-    }
-
-    @Test
-    fun lightStartsAfterSplashIsRemoved() {
-        val gate = gate(systemSplash = true)
-        val clock = HomeLaunchClock(gate)
-        clock.advance(frame)
-        assertEquals(0L, clock.elapsedMillis)
-        gate.splashRemoved()
-        clock.advance(frame)
-        assertEquals(16L, clock.elapsedMillis)
-    }
-
-    @Test
-    fun startsAnywayWhenNoSystemSplashArrives() {
-        val clock = HomeLaunchClock(gate(systemSplash = true))
-        repeat(24) { clock.advance(frame) }
-        assertEquals(0L, clock.elapsedMillis)
-        clock.advance(frame)
-        assertEquals(16L, clock.elapsedMillis)
     }
 
     @Test

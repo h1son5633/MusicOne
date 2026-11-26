@@ -71,14 +71,20 @@ internal class NeteaseSourceServices(private val state: () -> NeteasePackageStat
         SourcePage(values.map { it.toCollection(account?.userId) }, null)
     }
     override suspend fun detail(collection: SourceCollection): SourceCollection = read { owner, cookie, account ->
-        owner.api.playlistPage(collection.toNetease(), cookie, account?.hasVipAccess == true, null).playlist.toCollection(account?.userId)
+        val netease = collection.toNetease()
+        val page = owner.cachedFirstPage(netease)
+            ?: owner.api.playlistPage(netease, cookie, account?.hasVipAccess == true, null).also { owner.storeFirstPage(netease, it) }
+        page.playlist.toCollection(account?.userId)
     }
     override suspend fun tracks(collection: SourceCollection, request: SourceCursorRequest): SourcePage<SourceTrackDetails> = read { owner, cookie, account ->
         val cursor = request.cursor?.let { encoded -> JSONObject(encoded).let { value ->
             val ids = value.optJSONArray("ids")
             NeteaseTrackCursor(value.getInt("offset"), ids?.let { (0 until it.length()).map(it::getString) })
         } }
-        val page = owner.api.playlistPage(collection.toNetease(), cookie, account?.hasVipAccess == true, cursor)
+        val netease = collection.toNetease()
+        val page = if (cursor == null) owner.cachedFirstPage(netease)
+            ?: owner.api.playlistPage(netease, cookie, account?.hasVipAccess == true, null).also { owner.storeFirstPage(netease, it) }
+            else owner.api.playlistPage(netease, cookie, account?.hasVipAccess == true, cursor)
         val next = page.next?.let { JSONObject().put("offset", it.offset).put("ids", JSONArray(it.trackIds)).toString() }
         SourcePage(page.playlist.tracks.map { it.toDetails(account?.userId) }, next)
     }

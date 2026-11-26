@@ -9,13 +9,8 @@ import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 
 internal object NeteaseCrypto {
-    private const val LINUX_KEY_HEX = "7246674226682325323F5E6544673A51"
     private const val EAPI_KEY = "e82ckenh8dichen8"
     private val secureRandom = SecureRandom()
-
-    fun encryptLinux(payload: String): String =
-        aesEcb(payload.toByteArray(Charsets.UTF_8), hexToBytes(LINUX_KEY_HEX), Cipher.ENCRYPT_MODE)
-            .toHex(upperCase = true)
 
     fun encryptEapi(apiPath: String, payload: String): String {
         val parsedPath = runCatching { URI.create(apiPath).path }.getOrNull().orEmpty()
@@ -74,6 +69,3 @@ private fun ByteArray.toHex(upperCase: Boolean = false): String {
         }
     }
 }
-
-private fun hexToBytes(value: String): ByteArray =
-    ByteArray(value.length / 2) { index -> value.substring(index * 2, index * 2 + 2).toInt(16).toByte() }

@@ -30,6 +30,14 @@ import java.net.URI
 private val images = object : LruCache<String, Bitmap>(16 * 1024) {
     override fun sizeOf(key: String, value: Bitmap) = (value.allocationByteCount / 1024).coerceAtLeast(1)
 }
+/** 网易云 CDN 支持 ?param=宽x高 服务端缩略图：列表与卡片只显示几百像素，原图常有上千像素、几百 KB，
+ * 逐张下原图是首页封面加载慢的主因。按解码上限 maxSide 直接向 CDN 要同尺寸的缩略图，字节数降一个数量级。 */
+private fun String.neteaseThumbnail(maxSide: Int): String {
+    if (!contains("music.126.net") || contains("param=")) return this
+    val separator = if (contains('?')) "&" else "?"
+    return "$this${separator}param=${maxSide}y$maxSide"
+}
+
 @Composable internal fun rememberArtworkBitmap(url: String?, refreshKey: Int? = null, maxSide: Int = 640): State<Bitmap?> {
     val context = LocalContext.current
     return produceState<Bitmap?>(null, url, refreshKey, maxSide) {
@@ -39,7 +47,7 @@ private val images = object : LruCache<String, Bitmap>(16 * 1024) {
         value = withContext(Dispatchers.IO) {
             runCatchingCancellable {
                 val bytes = if (url.startsWith("http")) {
-                    val connection = URI.create(url.asNeteaseHttpsUrl()).toURL().openConnection() as HttpURLConnection
+                    val connection = URI.create(url.asNeteaseHttpsUrl().neteaseThumbnail(maxSide)).toURL().openConnection() as HttpURLConnection
                     try { connection.connectTimeout = 12_000; connection.readTimeout = 25_000; connection.inputStream.use { it.readBytes() } }
                     finally { connection.disconnect() }
                 } else context.contentResolver.openInputStream(Uri.parse(url))?.use { it.readBytes() } ?: return@runCatchingCancellable null

@@ -47,7 +47,10 @@ internal fun HomeLaunchOverlay(
     settingsOrigin: () -> Rect,
 ) {
     LaunchedEffect(launch) {
-        // 首帧准备好即展示页面，不再等待音源、网络内容或封面；播放页预热也只到这里。
+        // 等右上角按钮的位置上报后再撤遮罩：冷启动头几帧按钮还没布局，位置为空时缩进动画无从指向，
+        // 只会退化成淡出、看起来像没有衔接。最多等约 100 帧（约 1.6 秒），等不到就按淡出处理。
+        var waited = 0
+        while (settingsOrigin().isEmpty && waited < 100) { withFrameNanos { }; waited++ }
         repeat(2) { withFrameNanos { } }
         launch.covering = false
     }
