@@ -133,7 +133,7 @@ internal fun BottomCapsule(
         val dark = MaterialTheme.colorScheme.background.luminance() < .3f
         val neutral = LocalPlatformNeutral.current
         val activeColor = MaterialTheme.colorScheme.primary
-        val inactiveColor = immersiveVisual?.secondary ?: MaterialTheme.colorScheme.onSurfaceVariant
+        val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
         val selectedColor = navigationCapsuleSelectionColor(
             neutral, MaterialTheme.colorScheme.primaryContainer,
         )
@@ -143,14 +143,12 @@ internal fun BottomCapsule(
             modifier = Modifier.width(metrics.width),
             shape = RoundedCornerShape(metrics.outerRadius),
             blurRadius = if (rowStyle) 18.dp else 20.dp,
-            // 深色背景时面板别压得太黑：沉浸面板的黑色罩层减半、普通深色底也降透明，让模糊后的背景透出来一些。
-            containerColor = immersiveVisual?.let { if (it.useDarkForeground) it.panelColor else it.panelColor.copy(alpha = .16f) }
-                ?: if (dark) Color(0xFF242526).copy(alpha = .58f) else Color.White.copy(alpha = lightTint),
-            fallbackColor = immersiveVisual?.panelColor
-                ?: if (dark) Color(0xFF242526) else Color(0xFFF3F4F6),
+            // 底栏外观全应用统一，不再跟随页面背景的沉浸色（此前"我的"页会变深、主页浅，用户要求统一成浅色基准）。
+            containerColor = if (dark) Color(0xFF242526).copy(alpha = .58f) else Color.White.copy(alpha = lightTint),
+            fallbackColor = if (dark) Color(0xFF242526) else Color(0xFFF3F4F6),
             border = androidx.compose.foundation.BorderStroke(
                 if (rowStyle) 1.dp else .8.dp,
-                immersiveVisual?.panelBorder ?: when {
+                when {
                     dark -> Color.White.copy(alpha = .16f)
                     rowStyle -> Color(0xFFE0E2E6)
                     else -> Color.White.copy(alpha = .72f)

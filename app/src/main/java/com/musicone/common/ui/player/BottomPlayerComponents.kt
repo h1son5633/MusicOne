@@ -94,8 +94,7 @@ private fun MiniPlayerSurface(
 ) {
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
     val dark = MaterialTheme.colorScheme.background.luminance() < .3f
-    val borderColor = immersiveVisual?.panelBorder
-        ?: if (dark) Color.White.copy(alpha = .16f) else Color(0xFFE0E2E6)
+    val borderColor = if (dark) Color.White.copy(alpha = .16f) else Color(0xFFE0E2E6)
     val handoff = LocalPlayerControlHandoff.current
     val barStyle = LocalBottomBarStyle.current
     val direction = LocalLayoutDirection.current
@@ -109,11 +108,9 @@ private fun MiniPlayerSurface(
             .padding(horizontal = 12.dp, vertical = MiniPlayerLayoutMetrics.outerPadding).then(modifier),
         shape = RoundedCornerShape(barStyle.surfaceCorner),
         blurRadius = 18.dp,
-        // 与导航胶囊一致：深色背景时罩层减淡，让背景透出来一些，不要压成纯黑。
-        containerColor = immersiveVisual?.let { if (it.useDarkForeground) it.panelColor else it.panelColor.copy(alpha = .16f) }
-            ?: if (dark) Color(0xFF242526).copy(alpha = .58f) else Color.White.copy(alpha = barStyle.lightTint),
-        fallbackColor = immersiveVisual?.panelColor
-            ?: if (dark) Color(0xFF242526) else Color(0xFFF6F7F8),
+        // 与导航胶囊一致：外观全应用统一，不跟随页面背景的沉浸色。
+        containerColor = if (dark) Color(0xFF242526).copy(alpha = .58f) else Color.White.copy(alpha = barStyle.lightTint),
+        fallbackColor = if (dark) Color(0xFF242526) else Color(0xFFF6F7F8),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             borderColor,
