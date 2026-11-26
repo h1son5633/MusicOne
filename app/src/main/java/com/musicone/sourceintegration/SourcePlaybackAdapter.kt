@@ -11,6 +11,8 @@ internal class SourcePlaybackAdapter(private val context: Context, override val 
     private suspend fun entry(): SourceEntry {
         val packages = SourcePackageController.get(context)
         packages.awaitStartup()
+        // 懒启动：队列里其他音源的歌首次播放时才加载该音源，不必等延时补启动。
+        if (packages.running(source.id) == null) packages.ensureStartedAsync(source.id)
         return packages.running(source.id)?.entry
             ?: throw PlatformApiException("${source.label}音源未安装或初始化失败")
     }

@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /** 一个应用进程只激活一次；导入、回退只修改待重启版本。 */
@@ -27,6 +30,7 @@ internal class SourcePackageController private constructor(private val context: 
     private var stopSourcePlayback: () -> Unit = {}
     private var notifyRemoval: (String) -> Unit = {}
     @Volatile private var activeInstances: Map<String, SourceInstance> = emptyMap()
+    private val deferredScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val startupTask = SourceStartup(CoroutineScope(SupervisorJob() + Dispatchers.IO)) { initialize() }
     val startup = startupTask.state
 
@@ -84,15 +88,42 @@ internal class SourcePackageController private constructor(private val context: 
         // 先从可信清单补齐旧记录的类型；待删除期间保留账号，下一次启动才清迁移副本。
         repository.installed().filter { it.kind == SourceKind.MAIN && (it.pendingRemoval || it.removed) }
             .forEach { clearRemovedSourceLegacyAccount(context, it.id) }
-        repository.startAfterProcessRestart().values.forEach { MusicSource.register(it.entry.descriptor) }
-        repository.startupErrors.firstOrNull()?.let { mutableMessage.value = it }
         // 保留删除记录的音源不参与主入口选择，缺包曲目仍使用原稳定身份。
         val selection = context.getSharedPreferences("platform_settings", Context.MODE_PRIVATE)
         val selected = selection.getString("selected_source", null)?.let { runCatching { MusicSource.valueOf(it) }.getOrNull() }
+        // 优先启动：开机只加载当前选中的音源，其余音源延后（被选中、被播放时按需启动，或延时补启动）。
+        repository.startPriority(selected?.takeIf { it != MusicSource.LOCAL }?.id).values
+            .forEach { MusicSource.register(it.entry.descriptor) }
+        repository.startupErrors.firstOrNull()?.let { mutableMessage.value = it }
         if (selected != null && selected != MusicSource.LOCAL && repository.running(selected.id) == null) {
             selection.edit().putString("selected_source", MusicSource.LOCAL.name).apply()
         }
         refresh()
+        scheduleDeferredStart()
+    }
+
+    /** 其余音源的延时补启动：开机一段时间后在后台逐个加载，期间被按需启动的自动跳过。 */
+    private fun scheduleDeferredStart() {
+        deferredScope.launch {
+            delay(DEFERRED_START_DELAY_MILLIS)
+            repository.installed().forEach { state ->
+                if (repository.running(state.id) == null) ensureStarted(state.id)
+            }
+        }
+    }
+
+    /** 懒启动单个音源（选中、播放、延时补启动共用）；须在后台线程调用，启动失败返回 false。 */
+    fun ensureStarted(id: String): Boolean {
+        if (activeInstances.containsKey(id)) return true
+        val instance = runCatching { repository.startOne(id) }.getOrNull() ?: return false
+        MusicSource.register(instance.entry.descriptor)
+        refresh()
+        return true
+    }
+
+    suspend fun ensureStartedAsync(id: String): Boolean {
+        if (activeInstances.containsKey(id)) return true
+        return withContext(Dispatchers.IO) { ensureStarted(id) }
     }
 
     // 页面只读已经发布的实例，不能争抢安装、验签和加载过程中持有的仓库锁。
@@ -153,6 +184,9 @@ internal class SourcePackageController private constructor(private val context: 
     private fun requireActions(): SourceHost = checkNotNull(actions) { "宿主界面尚未就绪" }
 
     companion object {
+        /** 其余音源延时补启动的等待时间：先保证冷启动与首页使用，之后再逐个补齐。 */
+        private const val DEFERRED_START_DELAY_MILLIS = 120_000L
+
         @Volatile private var instance: SourcePackageController? = null
         fun current(): SourcePackageController? = instance
         fun get(context: Context): SourcePackageController = instance ?: synchronized(this) {

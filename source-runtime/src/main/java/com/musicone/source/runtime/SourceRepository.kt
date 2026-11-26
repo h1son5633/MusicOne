@@ -66,7 +66,33 @@ class SourceRepository(context: Context, private val host: SourceHost) {
     @Synchronized fun startAfterProcessRestart(): Map<String, SourceInstance> {
         check(!started && live.isEmpty()) { "音源启动只能执行一次" }
         started = true
-        states.keys.toList().forEach { id ->
+        states.keys.toList().forEach { id -> activateSource(id, load = true) }
+        persist()
+        return live.toMap()
+    }
+
+    /**
+     * 优先启动：开机只真正加载 [priorityId] 一个音源，其余音源只做删除收尾、不加载，
+     * 等被选中、被播放或延时补启动时再由 [startOne] 按同一套激活流程加载，缩短冷启动到主页的时间。
+     */
+    @Synchronized fun startPriority(priorityId: String?): Map<String, SourceInstance> {
+        check(!started && live.isEmpty()) { "音源启动只能执行一次" }
+        started = true
+        states.keys.toList().forEach { id -> activateSource(id, load = id == priorityId) }
+        persist()
+        return live.toMap()
+    }
+
+    /** 懒启动单个音源：已在运行直接返回；未启动则走与开机相同的激活流程（含待更新版本与失败回退）。 */
+    @Synchronized fun startOne(id: String): SourceInstance? {
+        live[id]?.let { return it }
+        if (!started || id !in states) return null
+        activateSource(id, load = true)
+        persist()
+        return live[id]
+    }
+
+    private fun activateSource(id: String, load: Boolean) {
             val old = states.getValue(id).let {
                 if (registryReadOnly) it.copy(pendingVersion = null, pendingInstallId = null) else it
             }
@@ -81,10 +107,12 @@ class SourceRepository(context: Context, private val host: SourceHost) {
                         persist()
                     }
                 }
-                return@forEach
+                return
             }
-            if (old.removed) return@forEach
-            val candidate = old.pendingPackage ?: old.activePackage ?: return@forEach
+            if (old.removed) return
+            // 延后加载：激活事务与数据快照原样保留，等真正启动时再执行。
+            if (!load) return
+            val candidate = old.pendingPackage ?: old.activePackage ?: return
             val transaction = ActivationTransaction(File(root, "activation-backup/$id"), dataFile(id))
             var recoveredTransaction = false
             try {
@@ -108,7 +136,7 @@ class SourceRepository(context: Context, private val host: SourceHost) {
                 if (!restored) {
                     states[id] = old.copy(error = "初始化数据恢复未完成：${failure.message}")
                     persist()
-                    return@forEach
+                    return
                 }
                 val fallback = old.activePackage?.takeIf { it != candidate }
                 val recovered = fallback?.let { runCatching { loadVersion(old, it) }.getOrNull() }
@@ -117,7 +145,7 @@ class SourceRepository(context: Context, private val host: SourceHost) {
                     if (!restoredFallback) {
                         states[id] = old.copy(error = "旧版本初始化失败且数据恢复未完成")
                         persist()
-                        return@forEach
+                        return
                     }
                 }
                 if (recovered != null) live[id] = recovered
@@ -126,9 +154,6 @@ class SourceRepository(context: Context, private val host: SourceHost) {
                 persist()
                 transaction.finish()
             }
-        }
-        persist()
-        return live.toMap()
     }
 
     @Synchronized fun requestRollback(id: String) {

@@ -53,6 +53,13 @@ internal class PlatformSettingsViewModel @JvmOverloads constructor(application: 
             sessionRevision = it.sessionRevision + 1, homeSessionRevision = homeRevision, working = false) }
     }
     fun selectSource(source: MusicSource) {
+        if (source != MusicSource.LOCAL && sources.running(source.id) == null) {
+            // 懒启动：开机未加载的音源先在后台启动，成功后再走正常选择流程。
+            viewModelScope.launch {
+                if (sources.ensureStartedAsync(source.id)) selectSource(source)
+            }
+            return
+        }
         if (source != MusicSource.LOCAL && sources.running(source.id)?.entry?.descriptor?.kind != SourceKind.MAIN) return
         refresh?.cancel()
         preferences.saveSource(source)
@@ -60,17 +67,38 @@ internal class PlatformSettingsViewModel @JvmOverloads constructor(application: 
     }
     /** 需要登录的音源等账号就绪才成为主音源，中途退出时保持原选择。 */
     fun selectAfterLogin(source: MusicSource) {
+        if (sources.running(source.id) == null) {
+            // 懒启动：未加载的音源先启动再进入登录流程。
+            viewModelScope.launch {
+                if (sources.ensureStartedAsync(source.id)) selectAfterLogin(source)
+            }
+            return
+        }
         if (sources.running(source.id)?.entry?.authentication == null) return
         pendingLogin.begin(source)
         startLogin(source)
     }
     fun startLogin(source: MusicSource = state.value.selectedSource) {
+        if (source != MusicSource.LOCAL && sources.running(source.id) == null) {
+            // 懒启动：未加载的音源先启动再打开登录页。
+            viewModelScope.launch {
+                if (sources.ensureStartedAsync(source.id)) startLogin(source)
+            }
+            return
+        }
         if (sources.running(source.id)?.entry?.authentication == null) return
         host.openDestination("source-authentication", mapOf("sourceId" to source.id))
     }
     /** 音源设置复用登录页同一套外部页面层，不切换当前主音源。 */
     fun openSourceSettings(source: MusicSource) {
         if (!source.supportsSourceSettings) return
+        if (sources.running(source.id) == null) {
+            // 懒启动：未加载的音源先启动再打开其设置页。
+            viewModelScope.launch {
+                if (sources.ensureStartedAsync(source.id)) openSourceSettings(source)
+            }
+            return
+        }
         host.openDestination("source-settings", mapOf("sourceId" to source.id))
     }
     // 音源可能不主动通知登录成功，统一在登录页关闭时核对公开账号。
