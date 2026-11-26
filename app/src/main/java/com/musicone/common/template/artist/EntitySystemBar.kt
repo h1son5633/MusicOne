@@ -2,7 +2,6 @@ package com.musicone
 
 import android.app.Activity
 import android.content.ContextWrapper
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -13,15 +12,15 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-/** 底色始终留在播放页下面，播放页按自身裁剪自然覆盖，退出时露出原页。 */
+/** 状态栏全页透明：不再绘制任何底色条，内容直接顶到状态栏下面；这里只按页面实际底色决定状态栏图标明暗。 */
 @Composable
 internal fun EntitySystemBar(navigation: EntityNavigation, player: PageMotion,
     recommendation: RecommendationNavigation, settingsMotion: PageMotion,
     rootColor: Color = Color.Unspecified, rootDarkIcons: Boolean? = null) {
     val base = MaterialTheme.colorScheme.background
     val root = if (rootColor == Color.Unspecified) base else rootColor
-    val playlistColor = rememberPlaylistStatusColor(recommendation.playlist)
-    var pageColor = lerp(root, playlistColor, recommendation.motion.value)
+    // 歌单详情页的实际底色就是页面背景（封面取色只曾用来给状态栏条上色），图标明暗不再跟它走。
+    var pageColor = root
     navigation.pages.forEach { frame -> key(frame.key) {
         val album = (frame.target as? EntityTarget.Album)?.playlist
         val target = if (album != null) rememberPlaylistStatusColor(album) else frame.statusBarColor ?: pageColor
@@ -51,7 +50,7 @@ internal fun EntitySystemBar(navigation: EntityNavigation, player: PageMotion,
             if (controller.isAppearanceLightNavigationBars != darkNavigation) controller.isAppearanceLightNavigationBars = darkNavigation
         }
     }
-    Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(color))
+    Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars))
 }
 
 // 参数使用页面进度，准备阶段不提前切换图标；深色播放页接近顶部时改为浅色图标。

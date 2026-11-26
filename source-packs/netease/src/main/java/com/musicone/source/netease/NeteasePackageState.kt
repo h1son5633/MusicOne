@@ -40,6 +40,8 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
     var message by mutableStateOf<String?>(null)
     val homePlaylists = NeteasePageLoad<List<NeteasePlaylist>>(emptyList())
     val homeTracks = NeteasePageLoad<List<NeteaseTrack>>(emptyList())
+    // 主页自动刷新节流：已有数据时，距上次真正加载不足 30 分钟就直接沿用，不再重复请求。
+    private var lastHomeLoadAtMs = 0L
     private val library = NeteasePageLoad<List<NeteasePlaylist>>(emptyList())
     val recommendations get() = homePlaylists.value
     val recommendedTracks get() = homeTracks.value
@@ -107,6 +109,10 @@ internal class NeteasePackageState(val environment: SourceEnvironment) : AutoClo
         check()
         val expected = revision.get(); val cookie = credential(); val vip = account?.hasVipAccess == true
         if (next && (homePlaylists.loading || homeTracks.loading)) return
+        // 切页回来、从后台返回都会重新触发自动加载；30 分钟内已有数据就不再刷新（手动换一批 next=true 不受限）。
+        if (!next && (homePlaylists.value.isNotEmpty() || homeTracks.value.isNotEmpty()) &&
+            System.currentTimeMillis() - lastHomeLoadAtMs < 30 * 60 * 1000L) return
+        lastHomeLoadAtMs = System.currentTimeMillis()
         if (next) homePage++
         val page = homePage
         homePlaylists.start(scope, expected, revision::get) {
