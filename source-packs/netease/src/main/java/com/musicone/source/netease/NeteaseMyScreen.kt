@@ -1,5 +1,8 @@
 package com.musicone.source.netease
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -199,7 +202,7 @@ internal fun NeteaseMyScreen(
             contentPadding = PaddingValues(
                 start = 18.dp,
                 end = 18.dp,
-                top = 88.dp,
+                top = 88.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
                 bottom = bottomInset + 20.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp),

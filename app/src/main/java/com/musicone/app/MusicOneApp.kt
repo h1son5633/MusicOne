@@ -1,5 +1,6 @@
 package com.musicone
 
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -224,7 +225,6 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .playerStableStatusBarsPadding()
                     .onGloballyPositioned { backdropBounds = it.boundsInRoot() }
                     .drawWithContent {
                         layerRefresh.value
@@ -388,7 +388,7 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
                                 playerMotion.coverage,
                             )
                         },
-                        modifier = Modifier.playerStableStatusBarsPadding().align(Alignment.TopCenter),
+                        modifier = Modifier.statusBarsPadding().align(Alignment.TopCenter),
                         searchProgress = { publicScene?.search?.menu?.value ?: mainSearchMotion.menu.value },
                         settingsProgress = { settingsMotion.value },
                         settingsMounted = { settingsMotion.mounted },
@@ -424,7 +424,7 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
                     motion = recommendationNavigation.motion,
                     backdropLayer = backdropLayer,
                     backdropBounds = backdropBounds,
-                    modifier = Modifier.playerStableStatusBarsPadding().align(Alignment.TopCenter),
+                    modifier = Modifier.statusBarsPadding().align(Alignment.TopCenter),
                 )
                 if (publicScene == null && !publicPages.mounted) UnifiedPlaylistFloatingTools(
                     state = playlistFloatingToolsState,

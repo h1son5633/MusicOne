@@ -1,5 +1,8 @@
 package com.musicone
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -67,6 +70,7 @@ internal fun MainSourceHomeScreen(
     }
     val feedExitProgress = rememberMainSourceFeedExitProgress(feed, feedViewModel::finishRefreshExit)
     val listState = rememberLazyStaggeredGridState()
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val personalizedVisible by remember(listState) {
         derivedStateOf { listState.layoutInfo.visibleItemsInfo.any { it.key == "personalized" } }
     }
@@ -123,7 +127,7 @@ internal fun MainSourceHomeScreen(
             columns = StaggeredGridCells.Fixed(mainSourceHomeColumns(maxWidth, maxHeight)),
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = gutter, end = gutter, top = 82.dp, bottom = bottomInset + 24.dp),
+            contentPadding = PaddingValues(start = gutter, end = gutter, top = 82.dp + statusBarTop, bottom = bottomInset + 24.dp),
             verticalItemSpacing = 20.dp,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {

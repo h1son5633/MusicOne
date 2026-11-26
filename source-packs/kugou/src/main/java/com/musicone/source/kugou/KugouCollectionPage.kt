@@ -1,5 +1,8 @@
 package com.musicone.source.kugou
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,7 +16,7 @@ import androidx.compose.ui.unit.dp
     val playlist = state.playlist ?: return
     var selected by remember(playlist.id) { mutableStateOf(emptySet<String>()) }
     var selecting by remember(playlist.id) { mutableStateOf(false) }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 88.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 88.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text(playlist.title, style = MaterialTheme.typography.headlineMedium); Text(playlist.description) }
         item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button({ controller.play(playlist) }, enabled = playlist.tracks.isNotEmpty()) { Text("播放全部") }

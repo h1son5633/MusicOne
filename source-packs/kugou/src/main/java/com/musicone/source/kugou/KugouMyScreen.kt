@@ -1,5 +1,8 @@
 package com.musicone.source.kugou
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material3.Text
@@ -27,7 +30,7 @@ internal fun KugouMyScreen(
     BoxWithConstraints(Modifier.fillMaxSize()) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(kugouLibraryColumns(maxWidth)), state = scroll, modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topInset, bottom = bottomInset + 28.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topInset + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = bottomInset + 28.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         item("profile", span = { GridItemSpan(maxLineSpan) }) {

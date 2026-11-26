@@ -1,5 +1,8 @@
 package com.musicone.source.kugou
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -56,7 +59,7 @@ internal fun KugouHomeScreen(
         state = scroll,
         modifier = Modifier.fillMaxSize(),
         userScrollEnabled = true,
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topInset, bottom = bottomInset + 18.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topInset + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = bottomInset + 18.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

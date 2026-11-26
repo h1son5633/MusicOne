@@ -1,0 +1,58 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v7
+
+      - name: 配置 JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '25.0.2+10'
+
+      - name: 配置 Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          dependency-graph: disabled
+          validate-wrappers: true
+
+      - name: 配置 Android 命令行工具
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: 安装 Android 工具链
+        run: |
+          sdkmanager --install \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "ndk;27.1.12297006" \
+            "cmake;3.22.1"
+
+      - name: 构建调试包（正式签名与音源签名不在 CI 内，与官方质量基线一致）
+        run: |
+          ./gradlew \
+            :app:assembleDebug \
+            --no-daemon \
+            "-Dorg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" \
+            "-Pkotlin.daemon.jvmargs=-Xmx3g"
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: MusicOne-debug-apk
+          if-no-files-found: error
+          path: app/build/outputs/apk/debug/*.apk

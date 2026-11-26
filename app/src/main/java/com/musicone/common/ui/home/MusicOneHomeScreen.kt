@@ -1,5 +1,8 @@
 package com.musicone
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -60,6 +63,7 @@ internal fun PlatformHomeLayout(
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     ReportPrimaryHeaderScroll(MusicOnePage.HOME, gridState)
     val density = LocalDensity.current
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val motion = LocalPlaylistMotion.current
     androidx.compose.runtime.CompositionLocalProvider(
         LocalPlaylistCardViewport provides PlaylistCardViewport(
@@ -72,7 +76,7 @@ internal fun PlatformHomeLayout(
             modifier = Modifier.fillMaxSize().onGloballyPositioned { gridBounds = it.boundsInRoot() },
             userScrollEnabled = LocalPlayerMotion.current?.mounted != true && motion?.mounted != true &&
                 LocalPlaylistCardTransition.current?.busy != true,
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 82.dp, bottom = bottomInset + 18.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 82.dp + statusBarTop, bottom = bottomInset + 18.dp),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

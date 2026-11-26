@@ -1,5 +1,8 @@
 package com.musicone
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,7 +36,7 @@ internal fun PlatformSignedOutScreen(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 82.dp, bottom = bottomInset + 18.dp),
+        contentPadding = PaddingValues(top = 82.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = bottomInset + 18.dp),
     ) {
         item {
             Column(

@@ -1,5 +1,8 @@
 package com.musicone.sourceintegration
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -19,7 +22,7 @@ internal fun SourcePreparationContent(source: MusicSource, page: MusicOnePage, b
     val list = rememberLazyListState()
     ReportPrimaryHeaderScroll(page, list)
     LazyColumn(state = list, modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, top = 96.dp, end = 20.dp, bottom = bottomInset + 20.dp),
+        contentPadding = PaddingValues(start = 20.dp, top = 96.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), end = 20.dp, bottom = bottomInset + 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text(source.label, style = MaterialTheme.typography.headlineSmall) }
         item { Text(error ?: "正在准备音源，完成后自动显示内容", color = MaterialTheme.colorScheme.onSurfaceVariant) }

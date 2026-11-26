@@ -1,5 +1,8 @@
 package com.musicone.source.netease
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,7 +19,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable internal fun NeteaseSearchContent(owner: NeteasePackageState, actions: NeteaseTrackActions) {
     if (owner.account == null) { NeteaseSignedOut(owner, "登录后搜索网易云音乐"); return }
-    Column(Modifier.fillMaxSize().padding(top = 82.dp)) {
+    Column(Modifier.fillMaxSize().padding(top = 82.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding())) {
         OutlinedTextField(owner.searchQuery, { owner.searchQuery = it }, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             label = { Text("搜索歌曲、歌手") }, singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { owner.search(owner.searchQuery) }),

@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,7 +31,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
     }
     if (owner.account == null) { NeteaseSignedOut(owner, "连接网易云，获取你的推荐音乐"); return }
     LazyVerticalGrid(columns = GridCells.Adaptive(340.dp), modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 82.dp, bottom = (owner.bottomInset + 20).dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 82.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = (owner.bottomInset + 20).dp),
         horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(span = { GridItemSpan(maxLineSpan) }) { Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             NeteaseSectionHeading("今日推荐", "为你整理的音乐氛围")
@@ -58,13 +59,25 @@ import androidx.lifecycle.compose.LifecycleEventEffect
         }
     }
 }
+/** 把横滑行撑到屏幕两边：按左右边距各扩一截再移回去，裁剪落在真实屏幕边缘。 */
+private fun Modifier.neteaseHomeEdgeLayout(edgeInset: Dp): Modifier =
+    if (edgeInset == 0.dp) this else layout { measurable, constraints ->
+        val inset = edgeInset.roundToPx()
+        val placeable = measurable.measure(constraints.copy(
+            minWidth = constraints.maxWidth + inset * 2,
+            maxWidth = constraints.maxWidth + inset * 2,
+        ))
+        layout(constraints.maxWidth, placeable.height) { placeable.placeRelative(-inset, 0) }
+    }
+
 @Composable private fun NeteaseRecommendations(owner: NeteasePackageState) {
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    BoxWithConstraints(Modifier.fillMaxWidth().neteaseHomeEdgeLayout(20.dp)) {
+        val contentWidth = maxWidth - 40.dp
         val compact = maxWidth < 600.dp
-        val width = if (compact) (maxWidth * .74f).coerceIn(226.dp, 264.dp).coerceAtMost(maxWidth)
-            else (maxWidth * .31f).coerceIn(260.dp, 300.dp).coerceAtMost(maxWidth)
+        val width = if (compact) (contentWidth * .74f).coerceIn(226.dp, 264.dp).coerceAtMost(contentWidth)
+            else (contentWidth * .31f).coerceIn(260.dp, 300.dp).coerceAtMost(contentWidth)
         val height = width / if (compact) .82f else .84f
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(end = 20.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
             items(owner.recommendations, key = { it.id }) { playlist ->
                 val bitmap by rememberArtworkBitmap(playlist.artworkUrl)
                 Box(Modifier.width(width).height(height).clip(RoundedCornerShape(26.dp)).clickable { owner.openPlaylist(playlist) }) {

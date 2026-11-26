@@ -1,5 +1,8 @@
 package com.musicone
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -66,7 +69,7 @@ internal fun MainSourceSearchResults(
         clip = true
         alpha = playerSurfaceReveal(motion.full.value)
     }.background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.fillMaxSize().padding(top = 56.dp).graphicsLayer {
+        Box(Modifier.fillMaxSize().padding(top = 56.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding()).graphicsLayer {
             translationY = 32.dp.toPx() * (1f - motion.full.value)
         }) {
             if (motion.resultsReady) HorizontalPager(pager, Modifier.fillMaxSize().mainSourceSearchTopFade(), userScrollEnabled = !blocked && !motion.fullMoving, key = { it }) { index ->

@@ -1,5 +1,8 @@
 package com.musicone
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +19,7 @@ internal fun PlatformMyLayout(account: MusicAccount?, bottomInset: Dp) {
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 86.dp, bottom = bottomInset + 18.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 86.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = bottomInset + 18.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp),
     ) {
         item {

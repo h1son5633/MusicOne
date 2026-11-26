@@ -1,5 +1,8 @@
 package com.musicone
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -47,7 +50,7 @@ internal fun LocalMusicScreen(state: MusicOneUiState, bottomInset: Dp, onOpen: (
             selection.slots = playlistGridSlots(listOf(displayedPlaylists.map { it.id }) +
                 autoGroups.map { (_, group) -> group.map { it.id } }, columns)
         }
-        LazyVerticalGrid(GridCells.Fixed(columns), state = scroll, contentPadding = PaddingValues(start = gutter, end = gutter, top = 88.dp, bottom = bottomInset + 28.dp + trailingSpace),
+        LazyVerticalGrid(GridCells.Fixed(columns), state = scroll, contentPadding = PaddingValues(start = gutter, end = gutter, top = 88.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = bottomInset + 28.dp + trailingSpace),
             userScrollEnabled = !reorder.dragging && !editor.state.open,
             horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             item("imports", span = { GridItemSpan(maxLineSpan) }) {

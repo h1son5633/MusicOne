@@ -1,5 +1,8 @@
 package com.musicone
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -123,7 +126,7 @@ internal fun MainSourceMyScreen(
             .librarySegmentMotion(segmentMotion, section)
             .playerQualityBackdropSnapshot(editorBackdrop, editor.open),
             userScrollEnabled = !segmentMotion.moving && !reorder.dragging && !editor.open,
-            contentPadding = PaddingValues(start = gutter, end = gutter, top = gridTopPadding, bottom = bottomInset + 28.dp + trailingSpace),
+            contentPadding = PaddingValues(start = gutter, end = gutter, top = gridTopPadding + WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = bottomInset + 28.dp + trailingSpace),
             horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             item("profile", span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.animateContentSize(musicSpring()).padding(bottom = 12.dp)) { MainSourceProfileHeader(account, onOpenSettings, loginFreeName = source.label.takeIf { loginFree && account == null }) }
