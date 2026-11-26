@@ -64,6 +64,7 @@ fun MusicOneBackdropGlass(
     var surfaceBounds by remember { mutableStateOf(Rect.Zero) }
     var surfaceCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val menuSampling = LocalPlayerMenuSampling.current
+    val backdropFrozen = LocalPlayerBackdropFrozen.current?.value == true
     val hasBackdrop =
         !ExperiencePreferences.options.disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && backdropLayer != null && backdropBounds.width > 0f && backdropBounds.height > 0f
     val resolvedContainerColor = if (hasBackdrop) containerColor else fallbackColor
@@ -173,7 +174,11 @@ fun MusicOneBackdropGlass(
                                         sampleDensity, sampleDirection, radius, fallbackColor), recordSample)
                                 }
                                 onDrawBehind {
-                                    if (liveRecording == null) recordSample()
+                                    if (liveRecording == null) {
+                                        // 底图冻结期间（切页/滚动）底图本身没变，复用上次的模糊块，
+                                        // 不再每帧把同一块区域重录重糊——切页掉帧的一个大头。
+                                        if (!backdropFrozen) recordSample()
+                                    }
                                     else liveRecording.refresh(liveSampling!!.updates.version())
                                     translate(left = -inset.toFloat(), top = -inset.toFloat()) {
                                         scale(1f / sampleScale, 1f / sampleScale, Offset.Zero) { drawLayer(blurredLayer) }

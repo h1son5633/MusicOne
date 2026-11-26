@@ -65,7 +65,13 @@ internal class RootPageNavigation(
 
     fun isNavigationDragBlocked(): Boolean = navigationDragBlocked()
 
+    // 拖动切页时 beforePageChange 只在取整页变化时跑一次：原来每帧都取消重跑这个挂起钩子
+    // （含关搜索、等动画卸载的等待），是手指切页掉帧的一个来源。落位后的关搜索另有
+    // rememberMainSourceSearchHomeGuard 的 LaunchedEffect 兜底，不会漏。
+    private var lastDragHookPage: MusicOnePage? = null
+
     fun animateTo(page: MusicOnePage) {
+        lastDragHookPage = page
         animationJob?.cancel()
         animationJob = scope.launch {
             beforePageChange(page)
@@ -81,8 +87,12 @@ internal class RootPageNavigation(
     fun dragTo(position: Float) {
         animationJob?.cancel()
         val anchor = rootPagerAnchorForPosition(position)
+        val rounded = rootPageForPosition(position)
         animationJob = scope.launch {
-            beforePageChange(rootPageForPosition(position))
+            if (rounded != lastDragHookPage) {
+                lastDragHookPage = rounded
+                beforePageChange(rounded)
+            }
             pagerState.requestScrollToPage(anchor.page, anchor.offsetFraction)
         }
     }

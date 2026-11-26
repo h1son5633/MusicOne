@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -152,6 +153,10 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
         }, recommendationNavigation.cards,
         rootVisible)
 
+    // 与底图录制闸门同一条件：切页或页面交互中底图冻结，玻璃件同步冻结复用旧模糊块。
+    val backdropFrozen = remember {
+        derivedStateOf { rootNavigation.pagerState.isScrollInProgress || !pageInteraction.quiet() }
+    }
     val queueState = rememberPlayerQueueState()
     val phonePresentation = rememberPhonePlayerPresentation(navigation.playerExpanded, playerMotion, queueState)
     val sourcePlayer = com.musicone.sourceintegration.rememberSourcePlayerMotion(viewModel, playerMotion, phonePresentation,
@@ -187,6 +192,7 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
         LocalPlayerSurfaceTexture provides playerSurfaceTexture,
         LocalPlayerAtmosphereMotion provides playerAtmosphereMotion,
         LocalPlayerBackdropTexture provides backdropLayer,
+        LocalPlayerBackdropFrozen provides backdropFrozen,
         LocalMiniPlayerBackdropUpdates provides miniBackdropUpdates,
         LocalPlayerControlHandoff provides playerControlHandoff,
         LocalPlayerBackdropBounds provides backdropBounds,

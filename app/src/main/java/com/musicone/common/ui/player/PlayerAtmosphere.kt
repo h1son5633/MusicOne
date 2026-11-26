@@ -21,6 +21,8 @@ internal val LocalPlayerSurfaceTexture = staticCompositionLocalOf<GraphicsLayer?
 internal val LocalPlayerAtmosphereTexture = staticCompositionLocalOf<GraphicsLayer?> { null }
 internal val LocalPlayerBackdropTexture = staticCompositionLocalOf<GraphicsLayer?> { null }
 internal val LocalPlayerBackdropBounds = staticCompositionLocalOf { androidx.compose.ui.geometry.Rect.Zero }
+/** 底图冻结信号（切页/滚动中，与底图录制闸门同一条件）：冻结时玻璃件复用上次的模糊块，不再每帧重录重糊。 */
+internal val LocalPlayerBackdropFrozen = staticCompositionLocalOf<State<Boolean>?> { null }
 
 internal fun playerMaterialProgress(progress: Float): Float {
     val p = progress.coerceIn(0f, 1f)
