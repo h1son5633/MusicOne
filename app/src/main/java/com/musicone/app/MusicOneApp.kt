@@ -229,9 +229,11 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
                     .onGloballyPositioned { backdropBounds = it.boundsInRoot() }
                     .drawWithContent {
                         layerRefresh.value
-                        // 左右滑页时暂停背景层录制：滑动中每帧重录整页再给玻璃件模糊采样是掉帧大头；
-                        // 滑动结束（isScrollInProgress 回落）会触发一次重绘并补录静止画面。
-                        if (refreshPlayerBackdrop.value && !rootNavigation.pagerState.isScrollInProgress) {
+                        // 交互中暂停背景层录制：滑动中每帧重录整页再给玻璃件模糊采样是掉帧大头。
+                        // 改为快照式（FlClash 同理）：手指按住、列表滚动、左右滑页时都不重拍底图，
+                        // 玻璃件继续采样上一张静止底图；页面静止（quiet）后的重绘会补录最新画面。
+                        if (refreshPlayerBackdrop.value && !rootNavigation.pagerState.isScrollInProgress &&
+                            pageInteraction.quiet()) {
                             backdropLayer.record {
                                 drawRect(if (immersiveSourceSurface) Color.Transparent else pageBackground)
                                 this@drawWithContent.drawContent()
