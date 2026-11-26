@@ -163,6 +163,9 @@ internal fun NeteaseMyScreen(
     onRestoreDefaultBackground: () -> Unit,
     listenSummary: String = "",
     onOpenRecent: () -> Unit = {},
+    onSyncHistory: () -> Unit = {},
+    historySyncing: Boolean = false,
+    hasHistoryBaseline: Boolean = false,
 ) {
     var backgroundDialogOpen by remember { mutableStateOf(false) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -200,6 +203,20 @@ internal fun NeteaseMyScreen(
                     modifier = Modifier.fillMaxWidth(),
                     style = TextStyle(shadow = profileTextShadow(visual)),
                 )
+            }
+            if (account != null) item("history-sync") {
+                Box(Modifier.fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    TextButton(onClick = onSyncHistory, enabled = !historySyncing) {
+                        Text(
+                            when {
+                                historySyncing -> "正在从网易云同步…"
+                                hasHistoryBaseline -> "重新同步网易云历史听歌时长"
+                                else -> "同步网易云历史听歌时长"
+                            },
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
             }
             item("music-title") {
                 NeteaseLibraryHeading(visual, catalog.loadingLibrary, onRefreshLibrary)
