@@ -76,11 +76,15 @@ class SourceRepository(context: Context, private val host: SourceHost) {
      * 等被选中、被播放或延时补启动时再由 [startOne] 按同一套激活流程加载，缩短冷启动到主页的时间。
      * 没有优先音源时（如全新安装、尚未选择音源）必须全部加载：全新安装的音源包都处于
      * 待生效状态，只有首次启动时激活才能使用，延后会让所有音源都卡在待生效、无一能登录。
+     * [manualOnlyIds] 中的音源例外：任何自动路径都不启动（包括全新安装的首次激活与延时补启动），
+     * 只有被用户主动选中、登录或播放时才由 [startOne] 启动。
      */
-    @Synchronized fun startPriority(priorityId: String?): Map<String, SourceInstance> {
+    @Synchronized fun startPriority(priorityId: String?, manualOnlyIds: Set<String> = emptySet()): Map<String, SourceInstance> {
         check(!started && live.isEmpty()) { "音源启动只能执行一次" }
         started = true
-        states.keys.toList().forEach { id -> activateSource(id, load = priorityId == null || id == priorityId) }
+        states.keys.toList().forEach { id ->
+            activateSource(id, load = id == priorityId || (priorityId == null && id !in manualOnlyIds))
+        }
         persist()
         return live.toMap()
     }

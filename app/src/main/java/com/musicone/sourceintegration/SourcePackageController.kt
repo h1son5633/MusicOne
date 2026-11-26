@@ -92,7 +92,8 @@ internal class SourcePackageController private constructor(private val context: 
         val selection = context.getSharedPreferences("platform_settings", Context.MODE_PRIVATE)
         val selected = selection.getString("selected_source", null)?.let { runCatching { MusicSource.valueOf(it) }.getOrNull() }
         // 优先启动：开机只加载当前选中的音源，其余音源延后（被选中、被播放时按需启动，或延时补启动）。
-        repository.startPriority(selected?.takeIf { it != MusicSource.LOCAL }?.id).values
+        // QQ 音乐只允许手动启动：不登录几乎不可用，任何自动路径都不拉起它，用户主动选它时才启动。
+        repository.startPriority(selected?.takeIf { it != MusicSource.LOCAL }?.id, MANUAL_ONLY_SOURCE_IDS).values
             .forEach { MusicSource.register(it.entry.descriptor) }
         repository.startupErrors.firstOrNull()?.let { mutableMessage.value = it }
         if (selected != null && selected != MusicSource.LOCAL && repository.running(selected.id) == null) {
@@ -102,11 +103,12 @@ internal class SourcePackageController private constructor(private val context: 
         scheduleDeferredStart()
     }
 
-    /** 其余音源的延时补启动：开机一段时间后在后台逐个加载，期间被按需启动的自动跳过。 */
+    /** 其余音源的延时补启动：开机一段时间后在后台逐个加载，期间被按需启动的自动跳过；只允许手动启动的音源（QQ）不补。 */
     private fun scheduleDeferredStart() {
         deferredScope.launch {
             delay(DEFERRED_START_DELAY_MILLIS)
             repository.installed().forEach { state ->
+                if (state.id in MANUAL_ONLY_SOURCE_IDS) return@forEach
                 if (repository.running(state.id) == null) ensureStarted(state.id)
             }
         }
@@ -186,6 +188,9 @@ internal class SourcePackageController private constructor(private val context: 
     companion object {
         /** 其余音源延时补启动的等待时间：先保证冷启动与首页使用，之后再逐个补齐。 */
         private const val DEFERRED_START_DELAY_MILLIS = 300_000L
+
+        /** 只允许手动启动的音源：自动路径（开机优先加载、全新安装首次激活、延时补启动）一律跳过。 */
+        private val MANUAL_ONLY_SOURCE_IDS = setOf(MusicSource.QQ.id)
 
         @Volatile private var instance: SourcePackageController? = null
         fun current(): SourcePackageController? = instance
