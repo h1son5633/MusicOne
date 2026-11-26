@@ -1,5 +1,8 @@
 package com.musicone
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +19,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
+import kotlin.math.abs
+import kotlin.math.tanh
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -43,20 +51,77 @@ internal fun BottomCapsule(
     val currentNavigationContact by rememberUpdatedState(onNavigationContact)
     val currentDragBlocked by rememberUpdatedState(navigationDragBlocked)
     val currentSelectionPosition by rememberUpdatedState(selectionPosition)
+    val currentSelectionDrag by rememberUpdatedState(onSelectionDrag)
     val scope = rememberCoroutineScope()
-    var dragPosition by remember { mutableStateOf<Float?>(null) }
-    val visualPosition = remember { { dragPosition ?: currentSelectionPosition() } }
+    // FlClash 式透镜动效（样式与数据不变，只换运动）：拖动时透镜用跟随弹簧追手指，
+    // 按下时药丸微微鼓起，快速滑动时按速度果冻拉伸。减动效时全部退化为直接跟随。
+    val reduceMotion = ExperiencePreferences.options.reduceMotion
+    val followSpec = if (reduceMotion) snap<Float>() else spring<Float>(dampingRatio = .9f, stiffness = 1024f)
+    val pressSpec = if (reduceMotion) snap<Float>() else spring<Float>(dampingRatio = .593f, stiffness = 311f)
+    var dragTarget by remember { mutableStateOf<Float?>(null) }
+    val dragAnim = remember { Animatable(0f) }
+    var dragActive by remember { mutableStateOf(false) }
+    val pressAnim = remember { Animatable(0f) }
+    val jellyAnim = remember { Animatable(0f) }
+    var jellyTarget by remember { mutableFloatStateOf(0f) }
+    val visualPosition = remember { { if (dragActive) dragAnim.value else dragTarget ?: currentSelectionPosition() } }
     var selectionTravelPx by remember { mutableFloatStateOf(1f) }
+    // 拖动期间把弹簧后的透镜位置持续交给页面，页面和药丸一起追手指。
+    LaunchedEffect(dragActive) {
+        if (dragActive) snapshotFlow { dragAnim.value }.collect { currentSelectionDrag(it) }
+    }
+    // 逐帧采样透镜速度，映射成果冻拉伸量（tanh 饱和，静止时自动回零）。
+    LaunchedEffect(Unit) {
+        var lastPosition = currentSelectionPosition()
+        var lastNanos = 0L
+        while (true) {
+            withFrameNanos { nanos ->
+                if (lastNanos != 0L) {
+                    val dtSeconds = (nanos - lastNanos).coerceAtLeast(1L) / 1_000_000_000f
+                    val position = visualPosition()
+                    jellyTarget = if (reduceMotion) 0f else .16f * tanh(abs(position - lastPosition) / dtSeconds / 2f)
+                    lastPosition = position
+                }
+                lastNanos = nanos
+            }
+        }
+    }
+    LaunchedEffect(jellyTarget) {
+        jellyAnim.animateTo(jellyTarget, if (reduceMotion) snap() else spring(dampingRatio = .4f, stiffness = 100f))
+    }
+    fun onDragAmount(amount: Float) {
+        val next = nextCapsuleDragPosition(dragTarget, currentSelectionPosition(), amount,
+            selectionTravelPx, currentDragBlocked()) ?: return
+        val starting = dragTarget == null
+        dragTarget = next
+        if (starting) {
+            dragActive = true
+            scope.launch {
+                dragAnim.snapTo(currentSelectionPosition())
+                dragAnim.animateTo(next, followSpec)
+            }
+        } else {
+            scope.launch { dragAnim.animateTo(next, followSpec) }
+        }
+    }
     fun settleDrag() {
-        val position = (dragPosition ?: selectionPosition())
+        val position = (if (dragActive) dragAnim.value else dragTarget ?: selectionPosition())
             .coerceIn(0f, MusicOnePage.entries.lastIndex.toFloat())
         val targetPage = rootPageForPosition(position)
         onPageChange(targetPage)
         scope.launch {
-            // 保留拖动终点一帧，等承接动画建立起步状态后再撤下 dragPosition，避免短暂闪跳旧选择位置。
-            androidx.compose.runtime.withFrameNanos { }
-            dragPosition = null
+            // 保留拖动终点一帧，等承接动画建立起步状态后再撤下拖动态，避免短暂闪跳旧选择位置。
+            withFrameNanos { }
+            dragTarget = null
+            dragActive = false
         }
+    }
+    fun onCapsuleContact() {
+        currentNavigationContact()
+        scope.launch { pressAnim.animateTo(1f, pressSpec) }
+    }
+    fun onCapsuleRelease() {
+        scope.launch { pressAnim.animateTo(0f, pressSpec) }
     }
     // 并排底栏传入自己的尺寸，描边和模糊半径与迷你播放条取同一套；经典布局保持原样。
     val rowStyle = capsuleMetrics != null
@@ -95,17 +160,12 @@ internal fun BottomCapsule(
                 Modifier.padding(metrics.innerPadding).fillMaxWidth().height(metrics.innerHeight)
                     .onSizeChanged { selectionTravelPx = (it.width / 2f).coerceAtLeast(1f) }
                     .navigationCapsuleGesture(
-                        onContact = { currentNavigationContact() },
+                        onContact = { onCapsuleContact() },
                         blocked = { currentDragBlocked() },
-                        onHorizontalDrag = { amount ->
-                            nextCapsuleDragPosition(dragPosition, currentSelectionPosition(), amount,
-                                selectionTravelPx, currentDragBlocked())?.let { updated ->
-                                dragPosition = updated
-                                onSelectionDrag(updated)
-                            }
-                        },
-                        onHorizontalEnd = { if (dragPosition != null) settleDrag() },
+                        onHorizontalDrag = { amount -> onDragAmount(amount) },
+                        onHorizontalEnd = { if (dragTarget != null) settleDrag() },
                         queueState = queueState,
+                        onRelease = { onCapsuleRelease() },
                     ),
             ) {
                 NavigationCapsuleSelection(
@@ -115,6 +175,8 @@ internal fun BottomCapsule(
                     inactiveColor = inactiveColor,
                     selectionColor = selectedColor,
                     metrics = metrics,
+                    stretch = { jellyAnim.value },
+                    swell = { pressAnim.value },
                     onHome = {
                         if (page == MusicOnePage.HOME && kotlin.math.abs(selectionPosition()) < .001f) {
                             primaryHeaderState.requestScrollToTop(MusicOnePage.HOME)

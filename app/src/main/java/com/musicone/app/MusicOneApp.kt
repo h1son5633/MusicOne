@@ -228,7 +228,9 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
                     .onGloballyPositioned { backdropBounds = it.boundsInRoot() }
                     .drawWithContent {
                         layerRefresh.value
-                        if (refreshPlayerBackdrop.value) {
+                        // 左右滑页时暂停背景层录制：滑动中每帧重录整页再给玻璃件模糊采样是掉帧大头；
+                        // 滑动结束（isScrollInProgress 回落）会触发一次重绘并补录静止画面。
+                        if (refreshPlayerBackdrop.value && !rootNavigation.pagerState.isScrollInProgress) {
                             backdropLayer.record {
                                 drawRect(if (immersiveSourceSurface) Color.Transparent else pageBackground)
                                 this@drawWithContent.drawContent()

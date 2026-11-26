@@ -107,15 +107,17 @@ internal fun NavigationCapsuleSelection(
     metrics: NavigationCapsuleMetrics,
     onHome: () -> Unit,
     onMy: () -> Unit,
+    stretch: () -> Float = { 0f },
+    swell: () -> Float = { 0f },
 ) {
     Box(Modifier.fillMaxSize()) {
         NavigationCapsuleLabels(
             inactiveColor, false, metrics,
-            Modifier.matchParentSize().selectionMask(position, metrics.selectionRadius, active = false),
+            Modifier.matchParentSize().selectionMask(position, metrics.selectionRadius, active = false, stretch = stretch, swell = swell),
         )
         NavigationCapsuleLabels(
             activeColor, true, metrics,
-            Modifier.matchParentSize().selectionMask(position, metrics.selectionRadius, active = true, selectionColor),
+            Modifier.matchParentSize().selectionMask(position, metrics.selectionRadius, active = true, selectionColor, stretch, swell),
         )
         // 点击区域只保留一份语义，装饰层不重复朗读，命中范围不受颜色裁切影响。
         Row(Modifier.matchParentSize()) {
@@ -125,13 +127,21 @@ internal fun NavigationCapsuleSelection(
     }
 }
 
-private fun Modifier.selectionMask(position: () -> Float, cornerRadius: Dp, active: Boolean, color: Color = Color.Transparent): Modifier =
+private fun Modifier.selectionMask(position: () -> Float, cornerRadius: Dp, active: Boolean, color: Color = Color.Transparent,
+    stretch: () -> Float = { 0f }, swell: () -> Float = { 0f }): Modifier =
     drawWithCache {
         val path = Path()
         val radius = CornerRadius(cornerRadius.toPx())
         onDrawWithContent {
             path.reset()
-            path.addRoundRect(RoundRect(navigationCapsuleSelectionBounds(size.width, size.height, position()), radius))
+            val base = navigationCapsuleSelectionBounds(size.width, size.height, position())
+            // 果冻与按压只改药丸的绘制形状：移动越快横向拉得越长、纵向略扁；按下时四周微微鼓起。
+            val s = stretch().coerceIn(-.08f, .22f)
+            val w = swell().coerceIn(0f, 1f)
+            val growX = base.width * s / 2f + w * 3.dp.toPx()
+            val growY = w * 2.dp.toPx() - base.height * s * .3f / 2f
+            val bounds = Rect(base.left - growX, base.top - growY, base.right + growX, base.bottom + growY)
+            path.addRoundRect(RoundRect(bounds, radius))
             if (active) drawPath(path, color)
             clipPath(path, if (active) ClipOp.Intersect else ClipOp.Difference) { this@onDrawWithContent.drawContent() }
         }

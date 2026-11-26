@@ -1,5 +1,7 @@
 package com.musicone
 
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -69,7 +71,9 @@ internal class RootPageNavigation(
             beforePageChange(page)
             pagerState.animateScrollToPage(
                 page = page.ordinal,
-                animationSpec = musicMotion(360),
+                // 点按切页改用弹簧滑动（带轻微过冲的 FlClash 式滑移），不再是匀速补间。
+                animationSpec = if (ExperiencePreferences.options.reduceMotion) snap()
+                    else spring(dampingRatio = .84f, stiffness = 420f),
             )
         }
     }
