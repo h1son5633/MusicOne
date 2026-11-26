@@ -469,7 +469,6 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
                 barMeasurements.detailInset)
             HomeLaunchOverlay(
                 launch = homeLaunch,
-                settingsOrigin = { settingsNavigation.origin },
             )
             sourceBackdrop.dialogContent()
         }
