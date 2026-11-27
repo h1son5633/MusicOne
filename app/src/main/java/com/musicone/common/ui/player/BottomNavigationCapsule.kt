@@ -61,6 +61,9 @@ internal fun BottomCapsule(
     val reduceMotion = ExperiencePreferences.options.reduceMotion
     val followSpec = if (reduceMotion) snap<Float>() else spring<Float>(dampingRatio = .9f, stiffness = 1024f)
     val pressSpec = if (reduceMotion) snap<Float>() else spring<Float>(dampingRatio = .593f, stiffness = 311f)
+    // 与根页面滑动相同的甩动阈值（600dp/s），定落点时换算成像素速度比较。
+    // 必须声明在 settleDrag 等本地函数之前，本地函数只能捕获先于它声明的变量。
+    val flingThresholdPx = with(LocalDensity.current) { 600.dp.toPx() }
     var dragTarget by remember { mutableStateOf<Float?>(null) }
     val dragAnim = remember { Animatable(0f) }
     var dragActive by remember { mutableStateOf(false) }
@@ -155,8 +158,6 @@ internal fun BottomCapsule(
     fun onCapsuleRelease() {
         scope.launch { pressAnim.animateTo(0f, pressSpec) }
     }
-    // 与根页面滑动相同的甩动阈值（600dp/s），定落点时换算成像素速度比较。
-    val flingThresholdPx = with(LocalDensity.current) { 600.dp.toPx() }
     // 并排底栏传入自己的尺寸，描边和模糊半径与迷你播放条取同一套；经典布局保持原样。
     val rowStyle = capsuleMetrics != null
     val lightTint = if (rowStyle) LocalBottomBarStyle.current.lightTint else .55f
