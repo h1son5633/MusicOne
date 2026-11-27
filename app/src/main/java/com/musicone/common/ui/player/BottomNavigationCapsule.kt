@@ -20,7 +20,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import kotlin.math.abs
 import kotlin.math.tanh
 import androidx.compose.ui.Alignment
@@ -31,6 +30,8 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -70,20 +71,35 @@ internal fun BottomCapsule(
     LaunchedEffect(dragActive) {
         if (dragActive) snapshotFlow { dragAnim.value }.collect { currentSelectionDrag(it) }
     }
-    // 逐帧采样透镜速度，映射成果冻拉伸量（tanh 饱和，静止时自动回零）。
-    LaunchedEffect(Unit) {
-        var lastPosition = currentSelectionPosition()
-        var lastNanos = 0L
-        while (true) {
-            withFrameNanos { nanos ->
-                if (lastNanos != 0L) {
-                    val dtSeconds = (nanos - lastNanos).coerceAtLeast(1L) / 1_000_000_000f
-                    val position = visualPosition()
-                    jellyTarget = if (reduceMotion) 0f else .16f * tanh(abs(position - lastPosition) / dtSeconds / 2f)
-                    lastPosition = position
+    // 果冻速度采样改按需驱动：snapshotFlow 只在透镜位置真正变化时才发出新值，
+    // 静止时收集器挂起，不再像原来那样 while(true)+withFrameNanos 每帧空转唤醒。
+    // 位置停止变化 80ms 后把目标归零，果冻由下面的弹簧平滑收回，不会突然跳变。
+    // reduceMotion 时整个采样不启动；开关切换会重启本 Effect 并取消旧收集，无重复协程。
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) {
+            jellyTarget = 0f
+            return@LaunchedEffect
+        }
+        var lastPosition = visualPosition()
+        var lastNanos = System.nanoTime()
+        var decayJob: Job? = null
+        try {
+            snapshotFlow { visualPosition() }.collect { position ->
+                val now = System.nanoTime()
+                val dtSeconds = (now - lastNanos) / 1_000_000_000f
+                if (dtSeconds > 0f) {
+                    jellyTarget = .16f * tanh(abs(position - lastPosition) / dtSeconds / 2f)
                 }
-                lastNanos = nanos
+                lastPosition = position
+                lastNanos = now
+                decayJob?.cancel()
+                decayJob = launch {
+                    delay(80)
+                    jellyTarget = 0f
+                }
             }
+        } finally {
+            decayJob?.cancel()
         }
     }
     LaunchedEffect(jellyTarget) {
