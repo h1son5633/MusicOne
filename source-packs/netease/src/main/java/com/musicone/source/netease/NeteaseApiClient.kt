@@ -196,34 +196,39 @@ internal class NeteaseApiClient(
         )
     }
 
-    /** 听歌打卡：把实际收听秒数上报网易云，更新账号的听歌排行。尽力上报，失败由调用方忽略。 */
+    /** 播放开始日志：让歌曲进入官方客户端的「最近播放」。尽力上报，失败由调用方记录并忽略。 */
+    fun startPlayLog(cookie: String, trackId: String) {
+        if (cookie.isBlank()) return
+        requireNumericId(trackId, "歌曲")
+        playLog(cookie, "startplay", JSONObject()
+            .put("id", trackId.toLong()).put("type", "song"))
+    }
+
+    /** 听歌打卡：把实际收听秒数上报网易云，给听歌排行计数。尽力上报，失败由调用方记录并忽略。 */
     fun scrobble(cookie: String, trackId: String, seconds: Long) {
         if (cookie.isBlank() || seconds <= 0) return
         requireNumericId(trackId, "歌曲")
-        // 听歌打卡须走 weapi 且 json 字段齐全（download/end/type/wifi），
-        // 否则接口虽返回 200，听歌排行并不入账（开源客户端通用格式，2026-11-26 核对）。
-        val log = JSONObject().put("action", "play").put("json", JSONObject()
+        playLog(cookie, "play", JSONObject()
             .put("download", 0).put("end", "playend")
-            .put("id", trackId.toLong()).put("sourceId", 0)
-            .put("time", seconds).put("type", "song").put("wifi", 0))
-        postWeapi(
-            WEBLOG_WEAPI,
-            JSONObject().put("logs", JSONArray().put(log).toString()),
-            cookie,
-            "听歌打卡失败",
-        )
+            .put("id", trackId.toLong()).put("sourceId", "")
+            .put("time", seconds).put("type", "song").put("wifi", 0)
+            .put("source", "list"))
     }
 
-    private fun postWeapi(url: String, payload: JSONObject, cookie: String, fallback: String): JSONObject {
-        val csrf = Regex("__csrf=([^;]+)").find(cookie)?.groupValues?.get(1).orEmpty()
-        val (params, encSecKey) = NeteaseCrypto.encryptWeapi(payload.toString())
-        val response = postForm(
-            "$url?csrf_token=${csrf.formEncoded()}",
-            mapOf("params" to params, "encSecKey" to encSecKey),
+    /**
+     * 播放日志统一走 EAPI + clientlog 域名 + 客户端身份（本包请求头是 PC 客户端档案）：
+     * 日志接口只认客户端通道，网页 weapi 通道会返回成功但不入账（X-Music 实测结论，2026-11-27 核对）。
+     * 来源 id 目前从播放会话拿不到，sourceId/content 按参考实现留空，不伪造。
+     */
+    private fun playLog(cookie: String, action: String, json: JSONObject) {
+        json.put("mainsite", "1").put("mainsiteWeb", "1").put("content", "id=")
+        val log = JSONObject().put("action", action).put("json", json)
+        postEapi(
+            WEBLOG_EAPI,
+            JSONObject().put("logs", JSONArray().put(log).toString()),
             cookie,
-        ).body
-        response.requireSuccess(fallback)
-        return response
+            "播放日志上报失败",
+        )
     }
 
     fun changePlaylistTrack(cookie: String, playlistId: String, trackId: String, add: Boolean) {
@@ -438,7 +443,7 @@ internal class NeteaseApiClient(
         private const val PLAYBACK_LEGACY_EAPI = "https://interface.music.163.com/eapi/song/enhance/player/url"
         private const val PLAYBACK_EAPI = "https://interface3.music.163.com/eapi/song/enhance/player/url/v1"
         private const val LIKE_EAPI = "https://interface3.music.163.com/eapi/song/like"
-        private const val WEBLOG_WEAPI = "https://music.163.com/weapi/feedback/weblog"
+        private const val WEBLOG_EAPI = "https://clientlog.music.163.com/eapi/feedback/weblog"
         private const val LYRIC_API = "https://music.163.com/api/song/lyric"
         private const val LYRIC_EAPI = "https://interfacepc.music.163.com/eapi/song/lyric/v1"
     }

@@ -20,6 +20,36 @@ import androidx.compose.ui.unit.dp
                 verticalAlignment = Alignment.CenterVertically) { RadioButton(selected == quality.name, onClick = null); Text(quality.label, Modifier.padding(12.dp)) }
         }
         item { Text("可播放音质仍取决于歌曲版权、账号权限和真实返回的音频规格。") }
+        item { Text("听歌记录同步", style = MaterialTheme.typography.titleLarge) }
+        item {
+            var syncRecent by remember { mutableStateOf(preferences.getBoolean("sync_recent_plays", true)) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("同步最近播放")
+                    Text("开播时上报到网易云，让歌曲出现在官方 App 的最近播放里", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = syncRecent, onCheckedChange = { syncRecent = it
+                    check(preferences.edit().putBoolean("sync_recent_plays", it).commit()) })
+            }
+        }
+        item {
+            var syncRecord by remember { mutableStateOf(preferences.getBoolean("sync_play_record", true)) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("同步听歌排行")
+                    Text("听满歌曲一半或 30 秒（先到为准）后上报，给听歌排行计数", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = syncRecord, onCheckedChange = { syncRecord = it
+                    check(preferences.edit().putBoolean("sync_play_record", it).commit()) })
+            }
+        }
+        item {
+            val recentStatus = preferences.getString("sync_status_recent", null)
+            val recordStatus = preferences.getString("sync_status_record", null)
+            Text("最近播放：${recentStatus ?: "尚无上报记录"}\n听歌排行：${recordStatus ?: "尚无上报记录"}\n" +
+                "请求成功不等于入账成功，是否入账请以官方 App 的最近播放与听歌排行为准。",
+                style = MaterialTheme.typography.bodySmall)
+        }
         item { TextButton(onClick = { owner.open("authentication") }) { Text(if (owner.account == null) "登录网易云音乐" else "切换账号") } }
         if (owner.account != null) item { TextButton(onClick = { confirmLogout = true }) { Text("退出登录") } }
     }
