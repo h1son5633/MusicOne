@@ -257,7 +257,9 @@ private fun MusicOneContent(viewModel: MusicPlaybackRuntime) {
                             // 分页器自身不接收拖动，空白处的左右滑动由 rootPageSwipe 接管，子组件的横向操作优先。
                             modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()
                                 .rootPageSwipe(rootNavigation, rootSwipeEnabled),
-                            beyondViewportPageCount = 1,
+                            // 不预组合相邻页：冷启动只组合当前页，"我的"页等切过去时才组合、
+                            // 才触发它自己的数据加载与网络，避免不可见页面在启动期抢资源。
+                            beyondViewportPageCount = 0,
                             userScrollEnabled = false,
                             key = { MusicOnePage.entries[it] },
                         ) { page ->
