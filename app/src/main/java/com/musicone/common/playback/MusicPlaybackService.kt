@@ -9,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
@@ -56,6 +57,11 @@ class MusicPlaybackService : MediaSessionService() {
         DevicePlaybackOptions.initialize(this)
         val preloadBandwidth = PlaybackPreloadBandwidth()
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            // Media3 默认连接/读取超时均为 8 秒，移动网络下 CDN 供数短暂卡顿即触发读取超时、
+            // 播放中断（错误恢复有时自动续播、有时停住）。放宽到连接 15 秒 / 读取 30 秒，
+            // 与本应用 API 客户端的 12s/25s 同量级，只影响容错，不改变请求内容。
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(30_000)
             // 工厂专用 UA 会覆盖 DataSpec 的请求头；默认属性允许补充音源携带自己的 UA。
             .setDefaultRequestProperties(mapOf("User-Agent" to PlatformHttp.DEFAULT_USER_AGENT))
         val upstreamDataSourceFactory = SupplementalPlaybackRequests.factory(
@@ -71,7 +77,13 @@ class MusicPlaybackService : MediaSessionService() {
         )
         val renderersFactory = HiResCompatibleRenderersFactory(this)
         routingProvider = renderersFactory.routingProvider
+        // 默认缓冲（50 秒上限）在移动网络抖动下容易见底、频繁重缓冲。改为音乐流媒体参数：
+        // 目标缓冲 60–120 秒抗抖动；起播仍只需 2.5 秒、重缓冲后 5 秒恢复，不拖慢切歌起播。
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(60_000, 120_000, 2_500, 5_000)
+            .build()
         val player = ExoPlayer.Builder(this, renderersFactory)
+            .setLoadControl(loadControl)
             .setMediaSourceFactory(mediaSourceFactory)
             // 在线音源息屏后仍需维持网络接收，避免 USB 写入端因上游断流而停顿。
             .setWakeMode(C.WAKE_MODE_NETWORK)
