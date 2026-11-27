@@ -155,14 +155,14 @@ internal fun BottomCapsule(
     fun onCapsuleRelease() {
         scope.launch { pressAnim.animateTo(0f, pressSpec) }
     }
+    // 与根页面滑动相同的甩动阈值（600dp/s），定落点时换算成像素速度比较。
+    val flingThresholdPx = with(LocalDensity.current) { 600.dp.toPx() }
     // 并排底栏传入自己的尺寸，描边和模糊半径与迷你播放条取同一套；经典布局保持原样。
     val rowStyle = capsuleMetrics != null
     val lightTint = if (rowStyle) LocalBottomBarStyle.current.lightTint else .55f
     val metrics = capsuleMetrics ?: navigationCapsuleMetrics(
         PhonePlayerOrientationPolicy.isPhone(LocalConfiguration.current.smallestScreenWidthDp),
     )
-    // 与根页面滑动相同的甩动阈值（600dp/s），定落点时换算成像素速度比较。
-    val flingThresholdPx = with(LocalDensity.current) { 600.dp.toPx() }
     Box(Modifier.fillMaxWidth().padding(top = metrics.topGap, bottom = metrics.bottomGap), contentAlignment = Alignment.Center) {
         val dark = MaterialTheme.colorScheme.background.luminance() < .3f
         val neutral = LocalPlatformNeutral.current
