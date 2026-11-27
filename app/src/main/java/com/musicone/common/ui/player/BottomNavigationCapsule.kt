@@ -20,7 +20,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import kotlin.math.abs
 import kotlin.math.tanh
 import androidx.compose.ui.Alignment
@@ -30,9 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @Composable
@@ -106,32 +107,46 @@ internal fun BottomCapsule(
     LaunchedEffect(jellyTarget) {
         jellyAnim.animateTo(jellyTarget, if (reduceMotion) snap() else spring(dampingRatio = .4f, stiffness = 100f))
     }
+    // 拖动跟随只保留一个收集器（补丁 1.1）：onDragAmount 只更新 dragTarget，
+    // 这里用 collectLatest 追最新目标——新目标到来自动取消上一个未完成的跟随动画，
+    // 同一时间只有一个跟随动画在跑，不再每个触摸事件都 launch 一个新协程互相打断。
+    // dragTarget 变回 null（松手）时正在跑的跟随立即取消，位置交给切页动画。
+    val currentFollowSpec by rememberUpdatedState(followSpec)
+    LaunchedEffect(Unit) {
+        var sessionActive = false
+        snapshotFlow { dragTarget }.collectLatest { target ->
+            if (target == null) {
+                sessionActive = false
+            } else {
+                if (!sessionActive) {
+                    sessionActive = true
+                    dragAnim.snapTo(currentSelectionPosition())
+                }
+                dragAnim.animateTo(target, currentFollowSpec)
+            }
+        }
+    }
     fun onDragAmount(amount: Float) {
         val next = nextCapsuleDragPosition(dragTarget, currentSelectionPosition(), amount,
             selectionTravelPx, currentDragBlocked()) ?: return
-        val starting = dragTarget == null
+        if (dragTarget == null) dragActive = true
         dragTarget = next
-        if (starting) {
-            dragActive = true
-            scope.launch {
-                dragAnim.snapTo(currentSelectionPosition())
-                dragAnim.animateTo(next, followSpec)
-            }
-        } else {
-            scope.launch { dragAnim.animateTo(next, followSpec) }
-        }
     }
-    fun settleDrag() {
-        val position = (if (dragActive) dragAnim.value else dragTarget ?: selectionPosition())
+    fun settleDrag(velocityX: Float) {
+        // 落点依据改用手指最后位置 dragTarget，不用弹簧追随值 dragAnim.value：
+        // 弹簧滞后于手指，慢拖到中间松手时会被取整到错误一侧。
+        // 落点规则与根页面滑动共用 rootPageSwipeTarget：快速甩动按方向翻页，
+        // 否则就近吸附；恰好正中且无速度时向上取整，落点始终确定、不会停在半页。
+        val basis = (dragTarget ?: selectionPosition())
             .coerceIn(0f, MusicOnePage.entries.lastIndex.toFloat())
-        val targetPage = rootPageForPosition(position)
+        val targetPage = rootPageSwipeTarget(basis, velocityX, flingThresholdPx)
+        // 先停转发再切页：旧顺序是先切页、隔一帧才清拖动态，这一帧里转发器继续把
+        // 弹簧位置喂给 dragTo，而 dragTo 与切页动画共用同一个任务槽，会把切页动画
+        // 取消掉；转发停下后页面就停在最后一次锚点上，长期卡在半页。现在先清状态，
+        // 切页动画独占任务槽，PagerState 必然归位到整页。
+        dragTarget = null
+        dragActive = false
         onPageChange(targetPage)
-        scope.launch {
-            // 保留拖动终点一帧，等承接动画建立起步状态后再撤下拖动态，避免短暂闪跳旧选择位置。
-            withFrameNanos { }
-            dragTarget = null
-            dragActive = false
-        }
     }
     fun onCapsuleContact() {
         currentNavigationContact()
@@ -146,6 +161,8 @@ internal fun BottomCapsule(
     val metrics = capsuleMetrics ?: navigationCapsuleMetrics(
         PhonePlayerOrientationPolicy.isPhone(LocalConfiguration.current.smallestScreenWidthDp),
     )
+    // 与根页面滑动相同的甩动阈值（600dp/s），定落点时换算成像素速度比较。
+    val flingThresholdPx = with(LocalDensity.current) { 600.dp.toPx() }
     Box(Modifier.fillMaxWidth().padding(top = metrics.topGap, bottom = metrics.bottomGap), contentAlignment = Alignment.Center) {
         val dark = MaterialTheme.colorScheme.background.luminance() < .3f
         val neutral = LocalPlatformNeutral.current
@@ -181,7 +198,7 @@ internal fun BottomCapsule(
                         onContact = { onCapsuleContact() },
                         blocked = { currentDragBlocked() },
                         onHorizontalDrag = { amount -> onDragAmount(amount) },
-                        onHorizontalEnd = { if (dragTarget != null) settleDrag() },
+                        onHorizontalEnd = { velocityX -> if (dragTarget != null) settleDrag(velocityX) },
                         queueState = queueState,
                         onRelease = { onCapsuleRelease() },
                     ),
