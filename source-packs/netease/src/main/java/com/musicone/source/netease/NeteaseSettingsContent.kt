@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("同步听歌排行")
-                    Text("听满歌曲一半或 30 秒（先到为准）后上报，给听歌排行计数", style = MaterialTheme.typography.bodySmall)
+                    Text("歌曲结束或切歌时上报实际收听时长（需先听满歌曲一半或 30 秒），给听歌排行计数", style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(checked = syncRecord, onCheckedChange = { syncRecord = it
                     check(preferences.edit().putBoolean("sync_play_record", it).commit()) })

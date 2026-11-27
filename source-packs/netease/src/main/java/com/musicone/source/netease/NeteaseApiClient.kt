@@ -216,19 +216,20 @@ internal class NeteaseApiClient(
     }
 
     /**
-     * 播放日志统一走 EAPI + clientlog 域名 + 客户端身份（本包请求头是 PC 客户端档案）：
-     * 日志接口只认客户端通道，网页 weapi 通道会返回成功但不入账（X-Music 实测结论，2026-11-27 核对）。
+     * 播放日志走 EAPI + clientlog 域名 + macOS 客户端身份（与 X-Music 逐项核对，2026-11-27）：
+     * 日志接口只认客户端通道，网页 weapi 通道会返回成功但不入账；X-Music 的身份表注明
+     * 播放日志只认 macOS 档案。其 header 以 JSON 字符串进载荷、Cookie 剔除用户身份字段后
+     * 追加 macOS 档案、UA 用 macOS 档案——三处都在 NeteaseRequestContext 的 weblog 专用
+     * 构造里，只影响本通道，包内其他接口仍用 PC 档案与对象 header。
      * 来源 id 目前从播放会话拿不到，sourceId/content 按参考实现留空，不伪造。
      */
     private fun playLog(cookie: String, action: String, json: JSONObject) {
-        json.put("mainsite", "1").put("mainsiteWeb", "1").put("content", "id=")
-        val log = JSONObject().put("action", action).put("json", json)
-        postEapi(
-            WEBLOG_EAPI,
-            JSONObject().put("logs", JSONArray().put(log).toString()),
-            cookie,
-            "播放日志上报失败",
-        )
+        val device = deviceId()
+        val payload = buildWeblogPayload(action, json, cookie, device)
+        val params = NeteaseCrypto.encryptEapi(WEBLOG_EAPI, payload.toString())
+        val response = postForm(WEBLOG_EAPI, mapOf("params" to params), neteaseWeblogCookie(cookie, device),
+            headers = mapOf("User-Agent" to NETEASE_OSX_USER_AGENT)).body
+        response.requireSuccess("播放日志上报失败")
     }
 
     fun changePlaylistTrack(cookie: String, playlistId: String, trackId: String, add: Boolean) {

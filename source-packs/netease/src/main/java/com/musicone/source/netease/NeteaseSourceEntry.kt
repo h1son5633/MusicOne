@@ -11,7 +11,7 @@ import com.musicone.source.sdk.*
 
 internal val LocalNeteaseReduceMotion = staticCompositionLocalOf { false }
 class NeteaseSourceEntry : SourceEntry, SourceMembershipProvider {
-    override val descriptor = SourceDescriptor(NETEASE_SOURCE_ID, "网易云音乐", SourceKind.MAIN, 7, "0.7",
+    override val descriptor = SourceDescriptor(NETEASE_SOURCE_ID, "网易云音乐", SourceKind.MAIN, 8, "0.8",
         setOf(SourceCapability.HOME, SourceCapability.SEARCH, SourceCapability.ACCOUNT, SourceCapability.PLAYLIST,
             SourceCapability.PLAYBACK, SourceCapability.LYRICS),
         useCustomPages = true, requiresLogin = true,
@@ -38,6 +38,13 @@ class NeteaseSourceEntry : SourceEntry, SourceMembershipProvider {
     override val mediaPlayback: SourceMediaPlayback = services
     override val lyricProvider: SourceLyricProvider = services
     override val trackTheme: SourceTrackTheme = services
+    // 必须覆写 settings 属性：宿主的能力校验只认这个属性（entry.settings != null 才在
+    // 主音源卡片上给齿轮入口），只靠 Content 的 "settings" 路由页面永远点不进去。
+    override val settings: SourceSettings = object : SourceSettings {
+        @Composable override fun Content() {
+            if (::owner.isInitialized) NeteaseSettingsContent(owner, authenticationService)
+        }
+    }
     override fun initialize(environment: SourceEnvironment) {
         check(!::owner.isInitialized); owner = NeteasePackageState(environment); trackActions = NeteaseTrackActions(owner, services)
     }
