@@ -5,7 +5,8 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.jar.JarFile
 
-data class VerifiedSourceArchive(val file: File, val manifest: SourceManifest, val signerSha256: String)
+data class VerifiedSourceArchive(val file: File, val manifest: SourceManifest, val signerSha256: String,
+    val manifestText: String = "")
 
 class SourceArchiveVerifier(private val androidApi: Int = Build.VERSION.SDK_INT,
     private val hostCompatibility: SourceHostCompatibility = SourceHostCompatibility(0, "未知")) {
@@ -53,11 +54,12 @@ class SourceArchiveVerifier(private val androidApi: Int = Build.VERSION.SDK_INT,
             }
         }
         require(hasDex) { "包缺少可执行 DEX" }
-        val manifest = SourceManifest.parse(requireNotNull(manifestText) { "包缺少音源清单" })
+        val rawManifest = requireNotNull(manifestText) { "包缺少音源清单" }
+        val manifest = SourceManifest.parse(rawManifest)
         manifest.checkCompatibility(androidApi, hostCompatibility)
         require(originalName.substringAfterLast('.', "").lowercase() == manifest.descriptor.kind.extension) {
             "包后缀与主／补充音源类型不一致"
         }
-        return VerifiedSourceArchive(file, manifest, requireNotNull(signer) { "包没有有效签名" })
+        return VerifiedSourceArchive(file, manifest, requireNotNull(signer) { "包没有有效签名" }, rawManifest)
     }
 }

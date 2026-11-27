@@ -1,6 +1,7 @@
 package com.musicone.sourceintegration
 
 import android.content.Context
+import android.util.Log
 import com.musicone.MusicSource
 import com.musicone.source.runtime.ImportDecision
 import com.musicone.source.runtime.InstalledSource
@@ -16,6 +17,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.InputStream
+import java.security.MessageDigest
 
 /** 一个应用进程只激活一次；导入、回退只修改待重启版本。 */
 internal class SourcePackageController private constructor(private val context: Context) {
@@ -72,13 +75,28 @@ internal class SourcePackageController private constructor(private val context: 
     }
 
     private fun initialize() {
+        val gateStarted = System.nanoTime()
         val distribution = File(context.cacheDir, "prebundled-sources").apply { mkdirs() }
         val packages = context.assets.list("source-packs").orEmpty()
             .filter { it.endsWith(".mscm") || it.endsWith(".mscp") }
             .map { name ->
                 val copy = File(distribution, name)
-                if (copy.exists()) check(copy.delete()) { "无法刷新预装分发副本" }
-                context.assets.open("source-packs/$name").use { input -> copy.outputStream().use { input.copyTo(it) } }
+                // 内容未变就跳过复制：以 SHA-256 对比现有副本与 APK 内置原件，两者一致
+                // 才复用；不一致、缺失或损坏时仍完整复制（先写临时文件再改名，避免半成品）。
+                // 注意：跳过的只是「复制」这一步，包的可信性仍由仓库的验签环节决定。
+                val copyStarted = System.nanoTime()
+                val assetDigest = sha256Asset("source-packs/$name")
+                val existingDigest = if (copy.isFile) runCatching { sha256File(copy) }.getOrNull() else null
+                if (assetDigest != null && existingDigest != null && assetDigest == existingDigest) {
+                    Log.i("MusicOneStartup", "copy skipped $name (unchanged)")
+                } else {
+                    val staging = File(distribution, "$name.tmp")
+                    context.assets.open("source-packs/$name").use { input ->
+                        staging.outputStream().use { input.copyTo(it) }
+                    }
+                    check(staging.renameTo(copy)) { "无法刷新预装分发副本" }
+                    Log.i("MusicOneStartup", "copy done $name ${(System.nanoTime() - copyStarted) / 1_000_000}ms")
+                }
                 copy
             }
         repository.installPrebundledOnce(packages) { archive ->
@@ -101,7 +119,26 @@ internal class SourcePackageController private constructor(private val context: 
         }
         refresh()
         scheduleDeferredStart()
+        Log.i("MusicOneStartup", "gate total ${(System.nanoTime() - gateStarted) / 1_000_000}ms")
     }
+
+    private fun sha256Bytes(input: InputStream): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        input.use { stream ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val count = stream.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+    }
+
+    private fun sha256Asset(path: String): String? =
+        runCatching { sha256Bytes(context.assets.open(path)) }.getOrNull()
+
+    private fun sha256File(file: File): String = file.inputStream().use { sha256Bytes(it) }
 
     /** 其余音源的延时补启动：开机一段时间后在后台逐个加载，期间被按需启动的自动跳过；只允许手动启动的音源（QQ）不补。 */
     private fun scheduleDeferredStart() {

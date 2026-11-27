@@ -1,20 +1,25 @@
 package com.musicone.source.runtime
 
 import android.content.Context
+import android.os.Build
 import android.util.AtomicFile
+import android.util.Log
 import com.musicone.source.sdk.SourceHost
 import com.musicone.source.sdk.SourceKind
 import java.io.File
+import java.security.MessageDigest
 import java.util.UUID
+import org.json.JSONObject
 
 class SourceRepository(context: Context, private val host: SourceHost) {
     private val root = File(context.filesDir, "source-packs").apply { mkdirs() }
-    private val verifier = SourceArchiveVerifier(hostCompatibility = run {
+    private val hostCompatibility = run {
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
         @Suppress("DEPRECATION")
-        val code = if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+        val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
         SourceHostCompatibility(code, info.versionName ?: "未知")
-    })
+    }
+    private val verifier = SourceArchiveVerifier(hostCompatibility = hostCompatibility)
     private val packages = SourcePackageStore(root)
     private val loader = SourceLoader(context)
     private val live = mutableMapOf<String, SourceInstance>()
@@ -26,6 +31,108 @@ class SourceRepository(context: Context, private val host: SourceHost) {
 
     init { restoreDescriptorMetadata() }
 
+    // —— 验签去重（启动闸门优化，安全性说明）——
+    // JAR v1 验签的结论（签名者、清单、全部完整性检查）是文件字节的纯函数。本进程内按
+    // SHA-256 摘要备忘已验结果：摘要相同即字节相同，结论必然相同；路径不同只重绑 file。
+    // 跨启动的「内置包验签记录」把摘要、签名者与清单原文绑定存盘，复用时必须同时满足：
+    // 文件实际摘要与记录一致、注册表中该音源的 TOFU 签名者与记录一致、清单按当前宿主
+    // 重新通过兼容性检查。任一不满足或记录异常，一律回退完整验签；验签失败仍按原路拒绝。
+    private val verifyMemo = mutableMapOf<String, VerifiedSourceArchive>()
+    private val bundledRecordFile = AtomicFile(File(root, "bundled-verified.json"))
+    private var bundledRecords: MutableMap<String, BundledVerifyRecord>? = null
+
+    private data class BundledVerifyRecord(val sha256: String, val signer: String, val manifestText: String)
+
+    private fun sha256File(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+    }
+
+    private fun memoKey(digest: String, originalName: String) =
+        "$digest|${originalName.substringAfterLast('.', "").lowercase()}"
+
+    @Synchronized private fun verifyCached(file: File, originalName: String = file.name): VerifiedSourceArchive {
+        val digest = sha256File(file)
+        verifyMemo[memoKey(digest, originalName)]?.let { cached ->
+            Log.i("MusicOneStartup", "verify memo hit ${file.name}")
+            return cached.copy(file = file)
+        }
+        val started = System.nanoTime()
+        val archive = verifier.verify(file, originalName)
+        Log.i("MusicOneStartup", "verify full ${file.name} ${(System.nanoTime() - started) / 1_000_000}ms")
+        verifyMemo[memoKey(digest, originalName)] = archive
+        return archive
+    }
+
+    private fun loadBundledRecords(): MutableMap<String, BundledVerifyRecord> {
+        bundledRecords?.let { return it }
+        val loaded = mutableMapOf<String, BundledVerifyRecord>()
+        runCatching {
+            val json = JSONObject(bundledRecordFile.readFully().toString(Charsets.UTF_8))
+            if (json.optInt("policy", -1) == 1) {
+                val entries = json.getJSONObject("entries")
+                entries.keys().forEach { name ->
+                    val entry = entries.getJSONObject(name)
+                    loaded[name] = BundledVerifyRecord(entry.getString("sha256"),
+                        entry.getString("signer"), entry.getString("manifest"))
+                }
+            }
+        }
+        bundledRecords = loaded
+        return loaded
+    }
+
+    private fun saveBundledRecords() {
+        val records = bundledRecords ?: return
+        runCatching {
+            val entries = JSONObject()
+            records.forEach { (name, record) ->
+                entries.put(name, JSONObject().put("sha256", record.sha256)
+                    .put("signer", record.signer).put("manifest", record.manifestText))
+            }
+            val output = bundledRecordFile.startWrite()
+            try {
+                output.write(JSONObject().put("policy", 1).put("entries", entries).toString()
+                    .toByteArray(Charsets.UTF_8))
+                bundledRecordFile.finishWrite(output)
+            } catch (failure: Throwable) {
+                bundledRecordFile.failWrite(output)
+                throw failure
+            }
+        }
+    }
+
+    /** 内置包验签：优先复用绑定摘要的存盘记录（条件见上方说明），否则完整验签并回写记录。 */
+    private fun verifyBundled(file: File): VerifiedSourceArchive {
+        val digest = sha256File(file)
+        val record = loadBundledRecords()[file.name]
+        if (record != null && record.sha256 == digest) {
+            val manifest = runCatching { SourceManifest.parse(record.manifestText) }.getOrNull()
+            val state = manifest?.let { states[it.descriptor.id] }
+            if (manifest != null && state != null && state.signerSha256 == record.signer &&
+                runCatching { manifest.checkCompatibility(Build.VERSION.SDK_INT, hostCompatibility) }.isSuccess) {
+                val archive = VerifiedSourceArchive(file, manifest, record.signer, record.manifestText)
+                verifyMemo[memoKey(digest, file.name)] = archive
+                Log.i("MusicOneStartup", "verify skipped by record ${file.name}")
+                return archive
+            }
+        }
+        val archive = verifyCached(file)
+        if (archive.manifestText.isNotBlank()) {
+            loadBundledRecords()[file.name] = BundledVerifyRecord(digest, archive.signerSha256, archive.manifestText)
+            saveBundledRecords()
+        }
+        return archive
+    }
+
     @Synchronized fun installed(): List<InstalledSource> = states.values.toList()
     @Synchronized fun running(id: String): SourceInstance? = live[id]
 
@@ -35,7 +142,7 @@ class SourceRepository(context: Context, private val host: SourceHost) {
         try {
             input.copyTo(staging)
             check(staging.setReadOnly())
-            val archive = verifier.verify(staging, input.name)
+            val archive = verifyCached(staging, input.name)
             val descriptor = archive.manifest.descriptor
             val old = states[descriptor.id]
             check(old?.pendingRemoval != true) { "音源正等待删除，请先撤销删除" }
@@ -212,7 +319,7 @@ class SourceRepository(context: Context, private val host: SourceHost) {
         if (registryReadOnly) return
         files.forEach { file ->
             try {
-                val archive = verifier.verify(file)
+                val archive = verifyBundled(file)
                 onVerified(archive)
                 val descriptor = archive.manifest.descriptor
                 val previous = states[descriptor.id]
@@ -238,14 +345,19 @@ class SourceRepository(context: Context, private val host: SourceHost) {
     @Synchronized fun close() { live.values.forEach { runCatching { it.close() } }; live.clear() }
 
     private fun verifiedVersion(state: InstalledSource, reference: SourceInstallRef): VerifiedSourceArchive {
-        val archive = verifier.verify(packages.file(state.id, reference))
+        val archive = verifyCached(packages.file(state.id, reference))
         require(archive.signerSha256 == state.signerSha256 && archive.manifest.descriptor.id == state.id &&
             archive.manifest.descriptor.versionCode == reference.versionCode) { "已安装包身份变化" }
         return archive
     }
 
-    private fun loadVersion(state: InstalledSource, reference: SourceInstallRef): SourceInstance =
-        loader.load(verifiedVersion(state, reference), dataFile(state.id), host, false)
+    private fun loadVersion(state: InstalledSource, reference: SourceInstallRef): SourceInstance {
+        // 这一段包含 DexClassLoader 加载、入口实例化与登录会话恢复，一并计时便于对比。
+        val started = System.nanoTime()
+        val instance = loader.load(verifiedVersion(state, reference), dataFile(state.id), host, false)
+        Log.i("MusicOneStartup", "load ${state.id} dex+entry+session ${(System.nanoTime() - started) / 1_000_000}ms")
+        return instance
+    }
 
     /** 旧注册表只从重新验签的现存包补充展示字段，不执行第三方入口。 */
     private fun restoreDescriptorMetadata() {
